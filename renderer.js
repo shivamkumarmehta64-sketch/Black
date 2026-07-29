@@ -12,7 +12,29 @@ let tabs = [];
 let activeTabId = null;
 let tabCounter = 0;
 
-function createTab(url = 'https://www.google.com') {
+const NEW_TAB_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { background: #000; color: #fff; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    h1 { font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 10px; }
+    p { color: #888; font-size: 1.2rem; margin-bottom: 2rem; }
+    .search-box { width: 100%; max-width: 600px; padding: 16px 24px; border-radius: 30px; border: none; background: #1a1a1a; color: white; font-size: 1.2rem; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.5); transition: 0.3s; }
+    .search-box:focus { background: #222; box-shadow: 0 0 0 2px #4a4a4a; }
+  </style>
+</head>
+<body>
+  <h1>Black.</h1>
+  <p>Fast. Furious. Secure.</p>
+  <form action="https://www.google.com/search" method="get" style="width: 100%; display: flex; justify-content: center;">
+    <input type="text" name="q" class="search-box" placeholder="Search the web..." autofocus>
+  </form>
+</body>
+</html>
+`)}`;
+
+function createTab(url = NEW_TAB_HTML) {
   const tabId = 'tab-' + tabCounter++;
   
   // Create Tab Element
@@ -159,7 +181,21 @@ reloadBtn.addEventListener('click', () => {
 
 homeBtn.addEventListener('click', () => {
   const activeWebview = getActiveWebview();
-  if (activeWebview) activeWebview.loadURL('https://www.google.com');
+  if (activeWebview) activeWebview.loadURL(NEW_TAB_HTML);
+});
+
+window.addEventListener('keydown', (e) => {
+  // F12 to open Webview DevTools
+  if (e.key === 'F12') {
+    const activeWebview = getActiveWebview();
+    if (activeWebview) {
+      if (activeWebview.isDevToolsOpened()) {
+        activeWebview.closeDevTools();
+      } else {
+        activeWebview.openDevTools();
+      }
+    }
+  }
 });
 
 // Initialize with one tab
