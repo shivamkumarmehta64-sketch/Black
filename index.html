@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Black</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Use a modern font like Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Material Icons for buttons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+  <!-- Custom Titlebar Drag Area and Tabs -->
+  <div class="titlebar">
+    <div class="tabs-container" id="tabs-container"></div>
+    <button id="new-tab-btn" class="new-tab-btn" title="New Tab">
+      <span class="material-icons-round">add</span>
+    </button>
+  </div>
+  
+  <div class="toolbar">
+    <div class="nav-buttons">
+      <button id="back-btn" class="icon-btn" title="Go Back">
+        <span class="material-icons-round">arrow_back_ios_new</span>
+      </button>
+      <button id="forward-btn" class="icon-btn" title="Go Forward">
+        <span class="material-icons-round">arrow_forward_ios</span>
+      </button>
+      <button id="reload-btn" class="icon-btn" title="Reload">
+        <span class="material-icons-round">refresh</span>
+      </button>
+    </div>
+    <div class="address-bar-container">
+      <input type="text" id="url-input" class="address-bar" placeholder="Search or enter web address..." autocomplete="off">
+    </div>
+    <div class="menu-buttons">
+      <button id="home-btn" class="icon-btn" title="Home">
+        <span class="material-icons-round">home</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="browser-container" id="browser-container">
+    <!-- Webviews will be dynamically injected here -->
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "black",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^43.2.0"
+  },
+  "dependencies": {
+    "@cliqz/adblocker-electron": "^1.34.0",
+    "cross-fetch": "^4.1.0"
+  }
+}

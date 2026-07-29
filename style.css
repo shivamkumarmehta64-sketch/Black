@@ -1,0 +1,219 @@
+:root {
+  --bg-color: #000000;
+  --toolbar-bg: #121212;
+  --text-color: #ffffff;
+  --border-color: #2a2a2a;
+  --accent-color: #4a4a4a;
+  --hover-color: #242424;
+  --input-bg: #1e1e1e;
+  --input-focus: #333333;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Titlebar and Tabs */
+.titlebar {
+  height: 40px;
+  background-color: var(--bg-color);
+  -webkit-app-region: drag;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px;
+  gap: 4px;
+}
+
+.tabs-container {
+  display: flex;
+  height: 32px;
+  gap: 2px;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  background-color: #1a1a1a;
+  color: #888;
+  padding: 0 12px;
+  height: 100%;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  min-width: 120px;
+  max-width: 240px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tab:hover {
+  background-color: #222;
+}
+
+.tab.active {
+  background-color: var(--toolbar-bg);
+  color: #fff;
+}
+
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.tab-close {
+  background: none;
+  border: none;
+  color: #888;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  background-color: #444;
+  color: #fff;
+}
+
+.tab-close .material-icons-round {
+  font-size: 14px;
+}
+
+.new-tab-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  margin-bottom: 2px;
+}
+
+.new-tab-btn:hover {
+  background-color: #222;
+  color: #fff;
+}
+
+.new-tab-btn .material-icons-round {
+  font-size: 18px;
+}
+
+/* Hide inactive webviews */
+.webview-hidden {
+  display: none !important;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+  height: 52px;
+}
+
+.nav-buttons, .menu-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #a0a0a0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.icon-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--text-color);
+}
+
+.icon-btn .material-icons-round {
+  font-size: 20px;
+}
+
+.address-bar-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+}
+
+.address-bar {
+  width: 100%;
+  max-width: 600px;
+  background-color: var(--input-bg);
+  border: 1px solid transparent;
+  color: var(--text-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.address-bar:focus {
+  background-color: var(--input-focus);
+  border: 1px solid var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+}
+
+.address-bar::placeholder {
+  color: #777;
+}
+
+.browser-container {
+  flex: 1;
+  display: flex;
+  background-color: var(--bg-color);
+  position: relative;
+}
+
+webview {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
