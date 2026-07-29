@@ -1,7 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-const { ipcRenderer } = require('electron');
-
 const tabsContainer = document.getElementById('tabs-container');
 const browserContainer = document.getElementById('browser-container');
 const newTabBtn = document.getElementById('new-tab-btn');
@@ -175,21 +171,14 @@ const bookmarksBtn = document.getElementById('bookmarks-btn');
 const bookmarksMenu = document.getElementById('bookmarks-menu');
 const bookmarksList = document.getElementById('bookmarks-list');
 
-const bookmarksFile = path.join(__dirname, 'bookmarks.json');
 let savedBookmarks = [];
 
 function loadBookmarks() {
-  if (fs.existsSync(bookmarksFile)) {
-    try {
-      savedBookmarks = JSON.parse(fs.readFileSync(bookmarksFile, 'utf8'));
-    } catch (e) {
-      savedBookmarks = [];
-    }
-  }
+  savedBookmarks = window.api.loadBookmarks();
 }
 
 function saveBookmarks() {
-  fs.writeFileSync(bookmarksFile, JSON.stringify(savedBookmarks, null, 2));
+  window.api.saveBookmarks(savedBookmarks);
 }
 
 function renderBookmarks() {
@@ -289,16 +278,16 @@ function createOrUpdateDownload(filename, progress = 0, state = 'progressing') {
   }
 }
 
-ipcRenderer.on('download-start', (e, data) => {
+window.api.onDownloadStart((e, data) => {
   createOrUpdateDownload(data.filename, 0);
   downloadsBtn.style.color = '#4a90e2'; // Highlight
 });
 
-ipcRenderer.on('download-progress', (e, data) => {
+window.api.onDownloadProgress((e, data) => {
   createOrUpdateDownload(data.filename, data.progress);
 });
 
-ipcRenderer.on('download-done', (e, data) => {
+window.api.onDownloadDone((e, data) => {
   createOrUpdateDownload(data.filename, 100, data.state);
   downloadsBtn.style.color = ''; // Reset
 });
@@ -308,21 +297,14 @@ const historyBtn = document.getElementById('history-btn');
 const historyMenu = document.getElementById('history-menu');
 const historyList = document.getElementById('history-list');
 
-const historyFile = path.join(__dirname, 'history.json');
 let savedHistory = [];
 
 function loadHistory() {
-  if (fs.existsSync(historyFile)) {
-    try {
-      savedHistory = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
-    } catch (e) {
-      savedHistory = [];
-    }
-  }
+  savedHistory = window.api.loadHistory();
 }
 
 function saveHistory() {
-  fs.writeFileSync(historyFile, JSON.stringify(savedHistory, null, 2));
+  window.api.saveHistory(savedHistory);
 }
 
 function renderHistory() {

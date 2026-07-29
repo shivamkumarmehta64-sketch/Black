@@ -15,8 +15,9 @@ function createWindow() {
       symbolColor: '#ffffff'
     },
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       webviewTag: true // Allow <webview> for the browser tabs
     },
     backgroundColor: '#121212'
