@@ -1,3 +1,7 @@
+const fs = require('fs');
+const path = require('path');
+const { ipcRenderer } = require('electron');
+
 const tabsContainer = document.getElementById('tabs-container');
 const browserContainer = document.getElementById('browser-container');
 const newTabBtn = document.getElementById('new-tab-btn');
@@ -55,6 +59,9 @@ function createTab(url = 'https://www.google.com') {
     if (activeTabId === tabId) {
       urlInput.value = webviewEl.getURL();
       reloadBtn.innerHTML = '<span class="material-icons-round">refresh</span>';
+    }
+    if (typeof addToHistory === 'function') {
+      addToHistory(webviewEl.getURL(), titleEl.innerText);
     }
   });
 
@@ -161,3 +168,187 @@ homeBtn.addEventListener('click', () => {
 
 // Initialize with one tab
 createTab();
+
+// --- BOOKMARKS LOGIC ---
+const starBtn = document.getElementById('star-btn');
+const bookmarksBtn = document.getElementById('bookmarks-btn');
+const bookmarksMenu = document.getElementById('bookmarks-menu');
+const bookmarksList = document.getElementById('bookmarks-list');
+
+const bookmarksFile = path.join(__dirname, 'bookmarks.json');
+let savedBookmarks = [];
+
+function loadBookmarks() {
+  if (fs.existsSync(bookmarksFile)) {
+    try {
+      savedBookmarks = JSON.parse(fs.readFileSync(bookmarksFile, 'utf8'));
+    } catch (e) {
+      savedBookmarks = [];
+    }
+  }
+}
+
+function saveBookmarks() {
+  fs.writeFileSync(bookmarksFile, JSON.stringify(savedBookmarks, null, 2));
+}
+
+function renderBookmarks() {
+  bookmarksList.innerHTML = '';
+  savedBookmarks.forEach((b, index) => {
+    const li = document.createElement('li');
+    li.innerText = b.title || b.url;
+    li.title = b.url;
+    li.addEventListener('click', () => {
+      const activeWebview = getActiveWebview();
+      if (activeWebview) activeWebview.loadURL(b.url);
+      bookmarksMenu.classList.add('hidden');
+    });
+    bookmarksList.appendChild(li);
+  });
+}
+
+starBtn.addEventListener('click', () => {
+  const activeWebview = getActiveWebview();
+  if (activeWebview) {
+    const url = activeWebview.getURL();
+    const tab = tabs.find(t => t.id === activeTabId);
+    const title = tab ? tab.titleEl.innerText : url;
+    
+    // Avoid duplicates
+    if (!savedBookmarks.find(b => b.url === url)) {
+      savedBookmarks.push({ url, title });
+      saveBookmarks();
+      renderBookmarks();
+      
+      // Visual feedback
+      starBtn.innerHTML = '<span class="material-icons-round" style="color: #ffd700">star</span>';
+      setTimeout(() => {
+        starBtn.innerHTML = '<span class="material-icons-round">star_border</span>';
+      }, 1000);
+    }
+  }
+});
+
+historyBtn.addEventListener('click', () => {
+  historyMenu.classList.toggle('hidden');
+  bookmarksMenu.classList.add('hidden');
+  downloadsMenu.classList.add('hidden');
+});
+
+bookmarksBtn.addEventListener('click', () => {
+  bookmarksMenu.classList.toggle('hidden');
+  historyMenu.classList.add('hidden');
+  downloadsMenu.classList.add('hidden');
+});
+
+// --- DOWNLOADS LOGIC ---
+const downloadsBtn = document.getElementById('downloads-btn');
+const downloadsMenu = document.getElementById('downloads-menu');
+const downloadsList = document.getElementById('downloads-list');
+
+downloadsBtn.addEventListener('click', () => {
+  downloadsMenu.classList.toggle('hidden');
+  bookmarksMenu.classList.add('hidden');
+  historyMenu.classList.add('hidden');
+});
+
+function createOrUpdateDownload(filename, progress = 0, state = 'progressing') {
+  let li = document.getElementById('dl-' + filename);
+  if (!li) {
+    li = document.createElement('li');
+    li.id = 'dl-' + filename;
+    li.className = 'download-item';
+    
+    const nameEl = document.createElement('div');
+    nameEl.innerText = filename;
+    nameEl.className = 'download-name';
+    
+    const progressBg = document.createElement('div');
+    progressBg.className = 'download-progress-bg';
+    
+    const progressBar = document.createElement('div');
+    progressBar.className = 'download-progress-bar';
+    progressBar.id = 'dl-bar-' + filename;
+    
+    progressBg.appendChild(progressBar);
+    li.appendChild(nameEl);
+    li.appendChild(progressBg);
+    
+    downloadsList.insertBefore(li, downloadsList.firstChild);
+  }
+  
+  const progressBar = document.getElementById('dl-bar-' + filename);
+  if (progressBar) {
+    progressBar.style.width = progress + '%';
+  }
+  
+  if (state === 'completed') {
+    li.classList.add('download-complete');
+  } else if (state === 'cancelled' || state === 'interrupted') {
+    li.classList.add('download-failed');
+  }
+}
+
+ipcRenderer.on('download-start', (e, data) => {
+  createOrUpdateDownload(data.filename, 0);
+  downloadsBtn.style.color = '#4a90e2'; // Highlight
+});
+
+ipcRenderer.on('download-progress', (e, data) => {
+  createOrUpdateDownload(data.filename, data.progress);
+});
+
+ipcRenderer.on('download-done', (e, data) => {
+  createOrUpdateDownload(data.filename, 100, data.state);
+  downloadsBtn.style.color = ''; // Reset
+});
+
+// --- HISTORY LOGIC ---
+const historyBtn = document.getElementById('history-btn');
+const historyMenu = document.getElementById('history-menu');
+const historyList = document.getElementById('history-list');
+
+const historyFile = path.join(__dirname, 'history.json');
+let savedHistory = [];
+
+function loadHistory() {
+  if (fs.existsSync(historyFile)) {
+    try {
+      savedHistory = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
+    } catch (e) {
+      savedHistory = [];
+    }
+  }
+}
+
+function saveHistory() {
+  fs.writeFileSync(historyFile, JSON.stringify(savedHistory, null, 2));
+}
+
+function renderHistory() {
+  historyList.innerHTML = '';
+  savedHistory.slice(0, 50).forEach(h => {
+    const li = document.createElement('li');
+    li.innerText = h.title && h.title !== 'Loading...' ? h.title : h.url;
+    li.title = h.url;
+    li.addEventListener('click', () => {
+      const activeWebview = getActiveWebview();
+      if (activeWebview) activeWebview.loadURL(h.url);
+      historyMenu.classList.add('hidden');
+    });
+    historyList.appendChild(li);
+  });
+}
+
+function addToHistory(url, title) {
+  if (!url || url === 'about:blank') return;
+  if (savedHistory.length > 0 && savedHistory[0].url === url) return;
+  
+  savedHistory.unshift({ url, title, time: Date.now() });
+  if (savedHistory.length > 200) savedHistory.pop();
+  saveHistory();
+  renderHistory();
+}
+
+loadHistory();
+renderHistory();

@@ -33,12 +33,39 @@
     </div>
     <div class="address-bar-container">
       <input type="text" id="url-input" class="address-bar" placeholder="Search or enter web address..." autocomplete="off">
+      <button id="star-btn" class="icon-btn star-btn" title="Bookmark this page">
+        <span class="material-icons-round">star_border</span>
+      </button>
     </div>
     <div class="menu-buttons">
+      <button id="downloads-btn" class="icon-btn" title="Downloads">
+        <span class="material-icons-round">download</span>
+      </button>
+      <button id="history-btn" class="icon-btn" title="History">
+        <span class="material-icons-round">history</span>
+      </button>
+      <button id="bookmarks-btn" class="icon-btn" title="Bookmarks">
+        <span class="material-icons-round">bookmarks</span>
+      </button>
       <button id="home-btn" class="icon-btn" title="Home">
         <span class="material-icons-round">home</span>
       </button>
     </div>
+  </div>
+
+  <div id="downloads-menu" class="bookmarks-menu hidden">
+    <h3>Downloads</h3>
+    <ul id="downloads-list" class="menu-list"></ul>
+  </div>
+
+  <div id="bookmarks-menu" class="bookmarks-menu hidden">
+    <h3>Bookmarks</h3>
+    <ul id="bookmarks-list" class="menu-list"></ul>
+  </div>
+
+  <div id="history-menu" class="bookmarks-menu hidden">
+    <h3>History</h3>
+    <ul id="history-list" class="menu-list"></ul>
   </div>
 
   <div class="browser-container" id="browser-container">

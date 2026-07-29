@@ -217,3 +217,80 @@ webview {
   height: 100%;
   border: none;
 }
+
+/* Bookmarks Menu */
+.bookmarks-menu {
+  position: absolute;
+  top: 84px;
+  right: 16px;
+  width: 300px;
+  background-color: var(--toolbar-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.bookmarks-menu.hidden {
+  display: none;
+}
+
+.bookmarks-menu h3 {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-color);
+  margin: 0;
+}
+
+.menu-list {
+  list-style: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.menu-list li {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #1f1f1f;
+}
+
+.menu-list li:hover {
+  background-color: var(--hover-color);
+}
+
+.download-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.download-progress-bg {
+  width: 100%;
+  height: 4px;
+  background-color: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.download-progress-bar {
+  height: 100%;
+  background-color: #4a90e2;
+  width: 0%;
+  transition: width 0.2s;
+}
+
+.download-complete .download-progress-bar {
+  background-color: #4caf50;
+}
+
+.download-failed .download-progress-bar {
+  background-color: #f44336;
+}
+
+
