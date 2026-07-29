@@ -1,12 +1,13 @@
 :root {
-  --bg-color: #000000;
-  --toolbar-bg: #121212;
-  --text-color: #ffffff;
-  --border-color: #2a2a2a;
-  --accent-color: #4a4a4a;
-  --hover-color: #242424;
-  --input-bg: #1e1e1e;
-  --input-focus: #333333;
+  --bg-color: #050505;
+  --toolbar-bg: rgba(18, 18, 18, 0.7);
+  --text-color: #f0f0f0;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-color: #6366f1; /* Premium indigo accent */
+  --hover-color: rgba(255, 255, 255, 0.1);
+  --input-bg: rgba(30, 30, 30, 0.6);
+  --input-focus: rgba(40, 40, 40, 0.8);
+  --glass-blur: blur(16px);
 }
 
 * {
@@ -48,29 +49,44 @@ body {
 .tab {
   display: flex;
   align-items: center;
-  background-color: #1a1a1a;
+  background-color: rgba(26, 26, 26, 0.5);
   color: #888;
   padding: 0 12px;
   height: 100%;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  min-width: 120px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  min-width: 140px;
   max-width: 240px;
   font-size: 13px;
   cursor: pointer;
   border: 1px solid transparent;
   border-bottom: none;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
+  backdrop-filter: var(--glass-blur);
 }
 
 .tab:hover {
-  background-color: #222;
+  background-color: rgba(40, 40, 40, 0.8);
+  color: #ddd;
 }
 
 .tab.active {
-  background-color: var(--toolbar-bg);
+  background-color: #1a1a1a;
   color: #fff;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
 .tab-title {
@@ -139,7 +155,9 @@ body {
   background-color: var(--toolbar-bg);
   border-bottom: 1px solid var(--border-color);
   gap: 12px;
-  height: 52px;
+  height: 56px;
+  backdrop-filter: var(--glass-blur);
+  z-index: 10;
 }
 
 .nav-buttons, .menu-buttons {
@@ -180,23 +198,25 @@ body {
 
 .address-bar {
   width: 100%;
-  max-width: 600px;
+  max-width: 680px;
   background-color: var(--input-bg);
-  border: 1px solid transparent;
+  border: 1px solid rgba(255,255,255,0.05);
   color: var(--text-color);
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 10px 20px;
+  border-radius: 24px;
   font-size: 14px;
   font-family: 'Inter', sans-serif;
   outline: none;
-  transition: all 0.3s ease;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 0 rgba(99, 102, 241, 0);
+  backdrop-filter: blur(4px);
 }
 
 .address-bar:focus {
   background-color: var(--input-focus);
   border: 1px solid var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 12px rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
 }
 
 .address-bar::placeholder {
@@ -221,16 +241,24 @@ webview {
 /* Bookmarks Menu */
 .bookmarks-menu {
   position: absolute;
-  top: 84px;
+  top: 96px;
   right: 16px;
-  width: 300px;
-  background-color: var(--toolbar-bg);
+  width: 320px;
+  background-color: rgba(20, 20, 20, 0.85);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  backdrop-filter: var(--glass-blur);
   z-index: 1000;
   display: flex;
   flex-direction: column;
+  animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-origin: top right;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .bookmarks-menu.hidden {

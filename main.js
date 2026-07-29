@@ -2,6 +2,14 @@ const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 const { ElectronBlocker } = require('@cliqz/adblocker-electron');
 const fetch = require('cross-fetch');
+const contextMenu = require('electron-context-menu');
+
+contextMenu({
+  showSaveImageAs: true,
+  showCopyImage: true,
+  showCopyImageAddress: true,
+  showInspectElement: true
+});
 
 let mainWindow;
 
