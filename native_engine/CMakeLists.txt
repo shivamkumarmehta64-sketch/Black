@@ -13,12 +13,21 @@ set(SOURCES
     src/main.cpp
 )
 
-# Executable target
+set(SHIELDS_SOURCES
+    src/shields_main.cpp
+    src/shield_engine.cpp
+    src/shield_rules.cpp
+)
+
+# Executable targets
 add_executable(black_engine ${SOURCES})
+add_executable(black_shields ${SHIELDS_SOURCES})
 
 # Target features & compile options
 if(MSVC)
     target_compile_options(black_engine PRIVATE /W4 /EHsc)
+    target_compile_options(black_shields PRIVATE /W4 /EHsc)
 else()
     target_compile_options(black_engine PRIVATE -Wall -Wextra -Wpedantic -O2)
+    target_compile_options(black_shields PRIVATE -Wall -Wextra -Wpedantic -O2)
 endif()

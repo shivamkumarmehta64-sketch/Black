@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "gitmcp": {
+      "type": "remote",
+      "url": "https://gitmcp.io/shivamkumarmehta64-sketch/Black",
+      "enabled": true
+    }
+  }
+}

@@ -9,12 +9,16 @@
 </head>
 <body>
     <div id="loading-bar"></div>
-    <div id="tab-strip"></div>
+    <div id="tab-strip-container">
+        <div id="tab-strip"></div>
+        <div class="new-tab-btn" id="new-tab-btn" title="New Tab (Ctrl+T)"><span class="material-icons-round">add</span></div>
+    </div>
     <div id="toolbar">
         <div class="nav-btn-group">
             <div class="nav-circle-btn" id="btn-back"><span class="material-icons-round">arrow_back</span></div>
             <div class="nav-circle-btn" id="btn-fwd"><span class="material-icons-round">arrow_forward</span></div>
             <div class="nav-circle-btn" id="btn-reload"><span class="material-icons-round">refresh</span></div>
+            <div class="nav-circle-btn" id="btn-home" title="Home (Alt+Home)"><span class="material-icons-round">home</span></div>
         </div>
         
         <div id="url-bar-container">
@@ -29,8 +33,11 @@
         </div>
 
         <div class="nav-btn-group right">
+            <span class="incognito-badge" id="incognito-badge" style="display:none">InPrivate</span>
+            <div class="nav-circle-btn" id="btn-layout" title="Toggle Vertical Tabs"><span class="material-icons-round">vertical_split</span></div>
             <div class="nav-circle-btn" id="btn-pip" title="Picture in Picture"><span class="material-icons-round">picture_in_picture_alt</span></div>
-            <div class="nav-circle-btn" id="btn-shield" title="Privacy"><span class="material-icons-round">shield</span></div>
+            <div class="nav-circle-btn" id="btn-shield" title="Privacy & Performance"><span class="material-icons-round">shield</span></div>
+            <div class="nav-circle-btn" id="btn-fullscreen" title="Fullscreen (F11)"><span class="material-icons-round">fullscreen</span></div>
             <div class="nav-circle-btn" id="btn-menu" title="Menu"><span class="material-icons-round">more_vert</span></div>
         </div>
     </div>
@@ -42,8 +49,10 @@
             <div class="rail-btn" data-panel="bookmarks" title="Bookmarks"><span class="material-icons-round">bookmarks</span></div>
             <div class="rail-btn" data-panel="history" title="History"><span class="material-icons-round">history</span></div>
             <div class="rail-btn" data-panel="downloads" title="Downloads"><span class="material-icons-round">download</span></div>
+            <div class="rail-btn" data-panel="reading" title="Reading List"><span class="material-icons-round">bookmark_added</span></div>
             <div class="rail-btn" data-panel="notes" title="Notes"><span class="material-icons-round">edit_note</span></div>
             <div style="flex:1"></div>
+            <div class="rail-btn" data-panel="security" title="Security Center (OSINT)"><span class="material-icons-round">security</span></div>
             <div class="rail-btn" id="btn-ai" title="AI Assistant"><span class="material-icons-round">auto_awesome</span></div>
         </div>
 
@@ -66,6 +75,15 @@
             <span class="mh-title" id="mh-title">Playing Audio</span>
         </div>
 
+        <!-- Find in Page -->
+        <div class="find-bar glass-panel" id="find-bar" style="display:none">
+            <input type="text" id="find-input" placeholder="Find in page...">
+            <span id="find-count"></span>
+            <span class="material-icons-round" id="find-prev" title="Previous match">keyboard_arrow_up</span>
+            <span class="material-icons-round" id="find-next" title="Next match">keyboard_arrow_down</span>
+            <span class="material-icons-round" id="find-close" title="Close (Esc)">close</span>
+        </div>
+
         <!-- Status Bar -->
         <div id="status-bar">
             <div class="sb-left"><span class="ipc-badge">IPC ACTIVE</span></div>
@@ -74,26 +92,235 @@
         </div>
     </div>
 
+    <!-- AI Assistant Panel (Great Sage) -->
+    <div id="ai-panel" class="glass-panel">
+        <div class="ai-header">
+            <span class="material-icons-round ai-logo">auto_awesome</span>
+            <div class="ai-head-info">
+                <div class="ai-title">Great Sage</div>
+                <div class="ai-sub" id="ai-model-label">Not configured</div>
+            </div>
+            <span class="material-icons-round ai-head-btn" id="ai-btn-settings" title="AI provider settings">settings</span>
+            <span class="material-icons-round ai-head-btn" id="ai-btn-clear" title="Clear conversation">delete_sweep</span>
+            <span class="material-icons-round ai-head-btn" id="ai-btn-close" title="Close">close</span>
+        </div>
+        <div id="ai-messages" class="ai-messages">
+            <div class="ai-welcome">
+                <span class="material-icons-round ai-welcome-icon">auto_awesome</span>
+                <div>I am the Great Sage.</div>
+                <div class="ai-welcome-sub">Ask me anything. Configure your AI provider via the settings button above.</div>
+            </div>
+        </div>
+        <div class="ai-chips" id="ai-chips">
+            <button class="ai-chip" data-chip="site" title="Ask Great Sage to review the current page">Is this site safe?</button>
+            <button class="ai-chip" data-chip="exposure" title="Run an IP/VPN OSINT check and explain">Check my exposure</button>
+            <button class="ai-chip" data-chip="threats" title="Current scams & threats briefing">Latest threats</button>
+            <button class="ai-chip" data-chip="advisor" title="Site Advisor report explained">My Site Advisor</button>
+        </div>
+        <div class="ai-composer">
+            <textarea id="ai-input" rows="1" placeholder="Ask the Great Sage..."></textarea>
+            <button class="ai-send" id="ai-send" title="Send (Enter)"><span class="material-icons-round">send</span></button>
+        </div>
+    </div>
+
     <!-- Menus & Modals -->
     <div class="chrome-menu glass-panel" id="main-menu">
-        <div class="menu-item" id="mi-newtab"><span class="material-icons-round">add</span>New Tab</div>
-        <div class="menu-item" id="mi-history"><span class="material-icons-round">history</span>History</div>
-        <div class="menu-item" id="mi-downloads"><span class="material-icons-round">download</span>Downloads</div>
-        <div class="menu-item" id="mi-bookmarks"><span class="material-icons-round">bookmarks</span>Bookmarks</div>
+        <div class="menu-item" id="mi-newtab"><span class="material-icons-round">add</span>New Tab<span class="menu-kbd">Ctrl+T</span></div>
+        <div class="menu-item" id="mi-newwin"><span class="material-icons-round">open_in_new</span>New Window<span class="menu-kbd">Ctrl+N</span></div>
+        <div class="menu-item" id="mi-incognito"><span class="material-icons-round">visibility_off</span>InPrivate Window<span class="menu-kbd">Ctrl+Shift+N</span></div>
+        <div class="menu-item" id="mi-reopen"><span class="material-icons-round">replay</span>Reopen Closed Tab<span class="menu-kbd">Ctrl+Shift+T</span></div>
+        <div class="menu-item" id="mi-layout"><span class="material-icons-round">vertical_split</span>Vertical Tabs<span class="menu-kbd"></span></div>
         <div class="menu-divider"></div>
-        <div class="menu-item" id="mi-passwords"><span class="material-icons-round">password</span>Passwords</div>
+        <div class="menu-item" id="mi-bookmarks"><span class="material-icons-round">bookmarks</span>Bookmarks<span class="menu-kbd">Ctrl+Shift+O</span></div>
+        <div class="menu-item" id="mi-bm-all"><span class="material-icons-round">star</span>Bookmark All Tabs</div>
+        <div class="menu-item" id="mi-history"><span class="material-icons-round">history</span>History<span class="menu-kbd">Ctrl+H</span></div>
+        <div class="menu-item" id="mi-reading"><span class="material-icons-round">bookmark_added</span>Reading List</div>
+        <div class="menu-item" id="mi-downloads"><span class="material-icons-round">download</span>Downloads<span class="menu-kbd">Ctrl+J</span></div>
+        <div class="menu-item" id="mi-ext"><span class="material-icons-round">extension</span>Extensions</div>
+        <div class="menu-item" id="mi-passwords"><span class="material-icons-round">password</span>Passwords<span class="menu-kbd">Wallet</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="mi-reader"><span class="material-icons-round">menu_book</span>Immersive Reader<span class="menu-kbd">Ctrl+Shift+R</span></div>
+        <div class="menu-item" id="mi-find"><span class="material-icons-round">manage_search</span>Find in Page<span class="menu-kbd">Ctrl+F</span></div>
+        <div class="menu-item" id="mi-capture"><span class="material-icons-round">camera_alt</span>Web Capture</div>
+        <div class="menu-item" id="mi-printpdf"><span class="material-icons-round">picture_as_pdf</span>Print to PDF</div>
+        <div class="menu-item" id="mi-qr"><span class="material-icons-round">qr_code_2</span>Share QR Code</div>
+        <div class="menu-item" id="mi-zoom"><span class="material-icons-round">zoom_in</span>Zoom<span class="menu-kbd">Ctrl +/-</span></div>
+        <div class="menu-zoom" id="menu-zoom" style="display:none">
+            <button class="mbtn small" id="mz-minus">−</button>
+            <span id="mz-label">100%</span>
+            <button class="mbtn small" id="mz-plus">+</button>
+            <button class="mbtn small" id="mz-reset">Reset</button>
+        </div>
+        <div class="menu-item" id="mi-print"><span class="material-icons-round">print</span>Print<span class="menu-kbd">Ctrl+P</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="mi-usage"><span class="material-icons-round">speed</span>Privacy & Performance Center</div>
+        <div class="menu-item" id="mi-security"><span class="material-icons-round">security</span>Security Center (OSINT)<span class="menu-kbd">Ctrl+Shift+S</span></div>
+        <div class="menu-item" id="mi-block-site"><span class="material-icons-round">block</span>Block this site</div>
+        <div class="menu-item" id="mi-free"><span class="material-icons-round">memory</span>Free Memory</div>
         <div class="menu-item" id="mi-settings"><span class="material-icons-round">settings</span>Settings</div>
-        <div class="menu-divider"></div>
-        <div class="menu-item" id="mi-free"><span class="material-icons-round">memory</span>Free Resources</div>
-        <div class="menu-item" id="mi-reader"><span class="material-icons-round">menu_book</span>Reader Mode</div>
-        <div class="menu-item" id="mi-usage"><span class="material-icons-round">analytics</span>Usage Stats</div>
-        <div class="menu-item" id="mi-print"><span class="material-icons-round">print</span>Print</div>
+    </div>
+
+    <!-- Password Manager Modal -->
+    <div class="pm-overlay" id="pm-modal" style="display:none">
+        <div class="modal-panel glass-panel">
+            <div class="modal-header">
+                <h3>Passwords<span class="modal-sub">Edge Wallet</span></h3>
+                <span class="material-icons-round modal-close" data-close="pm-modal">close</span>
+            </div>
+            <div id="pm-content" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="pm-overlay" id="settings-modal" style="display:none">
+        <div class="modal-panel glass-panel">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <span class="material-icons-round modal-close" data-close="settings-modal">close</span>
+            </div>
+            <div class="modal-body">
+                <div class="mfield">
+                    <label for="set-engine">Default Search Engine</label>
+                    <select id="set-engine">
+                        <option value="google">Google</option>
+                        <option value="bing">Bing</option>
+                        <option value="duckduckgo">DuckDuckGo</option>
+                    </select>
+                </div>
+                <div class="set-row">
+                    <span>Force Dark Mode</span>
+                    <input type="checkbox" id="set-dark">
+                </div>
+                <div class="set-row">
+                    <span>Auto-sleep inactive tabs (5 min)</span>
+                    <input type="checkbox" id="set-sleep">
+                </div>
+                <div class="set-row">
+                    <span>Shields — native ad/tracker blocking (C++ engine)</span>
+                    <input type="checkbox" id="set-shields">
+                </div>
+                <div class="mfield">
+                    <label for="set-startup">On startup</label>
+                    <select id="set-startup">
+                        <option value="newtab">Open a new tab</option>
+                        <option value="continue">Continue where you left off</option>
+                        <option value="pages">Open specific pages</option>
+                    </select>
+                </div>
+                <div class="mfield" id="set-startup-pages-wrap" style="display:none">
+                    <label for="set-startup-pages">Pages (comma separated)</label>
+                    <input type="text" id="set-startup-pages" placeholder="https://example.com, https://news.ycombinator.com">
+                </div>
+                <div class="set-row">
+                    <span>Zoom</span>
+                    <span class="zoom-ctrl">
+                        <button class="mbtn small" id="set-zoom-minus">−</button>
+                        <span id="set-zoom-label">100%</span>
+                        <button class="mbtn small" id="set-zoom-plus">+</button>
+                    </span>
+                </div>
+                <div class="set-actions">
+                    <button class="mbtn primary" id="settings-save">Save Settings</button>
+                    <button class="mbtn danger" id="settings-clear">Clear Browsing Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy & Performance Center Modal -->
+    <div class="pm-overlay" id="usage-modal" style="display:none">
+        <div class="modal-panel glass-panel">
+            <div class="modal-header">
+                <h3>Privacy & Performance Center</h3>
+                <span class="material-icons-round modal-close" data-close="usage-modal">close</span>
+            </div>
+            <div id="usage-content" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Extensions Modal -->
+    <div class="pm-overlay" id="ext-modal" style="display:none">
+        <div class="modal-panel glass-panel">
+            <div class="modal-header">
+                <h3>Extensions<span class="modal-sub">Chromium engine</span></h3>
+                <span class="material-icons-round modal-close" data-close="ext-modal">close</span>
+            </div>
+            <div id="ext-content" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Share QR Modal -->
+    <div class="pm-overlay" id="qr-modal" style="display:none">
+        <div class="modal-panel glass-panel" style="text-align:center">
+            <div class="modal-header">
+                <h3>Share QR Code</h3>
+                <span class="material-icons-round modal-close" data-close="qr-modal">close</span>
+            </div>
+            <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;gap:12px">
+                <canvas id="qr-canvas" width="240" height="240"></canvas>
+                <div class="pm-hint" id="qr-url" style="word-break:break-all"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Provider Settings Modal -->
+    <div class="pm-overlay" id="ai-settings-modal" style="display:none">
+        <div class="modal-panel glass-panel">
+            <div class="modal-header">
+                <h3>Great Sage<span class="modal-sub">AI provider</span></h3>
+                <span class="material-icons-round modal-close" data-close="ai-settings-modal">close</span>
+            </div>
+            <div class="modal-body">
+                <div class="mfield">
+                    <label for="ai-provider">Provider preset</label>
+                    <select id="ai-provider">
+                        <option value="opencode" selected>OpenCode Zen (free)</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="mfield">
+                    <label for="ai-base-url">Base URL</label>
+                    <input type="text" id="ai-base-url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="mfield">
+                    <label for="ai-api-key">API key</label>
+                    <input type="password" id="ai-api-key" placeholder="API key (opencode.ai/auth for Zen; empty OK for local)">
+                </div>
+                <div class="mfield">
+                    <label for="ai-model">Model</label>
+                    <input type="text" id="ai-model" placeholder="gpt-4o-mini">
+                </div>
+                <div class="mfield">
+                    <label for="ai-temp">Temperature <span id="ai-temp-label">0.7</span></label>
+                    <input type="range" id="ai-temp" min="0" max="2" step="0.1" value="0.7" style="width:100%;accent-color:var(--accent)">
+                </div>
+                <div class="mfield">
+                    <label for="ai-max-tokens">Max tokens</label>
+                    <input type="number" id="ai-max-tokens" value="1024" min="16" max="32768">
+                </div>
+                <div class="mfield">
+                    <label for="ai-system">System prompt (Great Sage persona)</label>
+                    <textarea id="ai-system" rows="3" placeholder="You are the Great Sage..."></textarea>
+                </div>
+                <div class="set-actions">
+                    <button class="mbtn" id="ai-test">Test Connection</button>
+                    <button class="mbtn primary" id="ai-save-settings">Save</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tab Context Menu -->
     <div id="tab-context-menu" class="glass-panel">
         <div class="menu-item" id="tcm-pin">Pin Tab</div>
         <div class="menu-item" id="tcm-dup">Duplicate Tab</div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="tcm-group">Add to Group…</div>
+        <div class="menu-item" id="tcm-ungroup">Remove from Group</div>
         <div class="menu-divider"></div>
         <div class="menu-item" id="tcm-close">Close Tab</div>
         <div class="menu-item" id="tcm-close-other">Close Other Tabs</div>
@@ -110,6 +337,7 @@
     <div class="tab-tooltip" id="tab-tooltip"></div>
     <div class="toast-notif" id="toast-notif"></div>
 
+    <script src="qr.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html>

@@ -2,200 +2,460 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
     <title>New Tab</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap');
+        :root {
+            --accent: #38d9ff;
+            --dim: 0.28;
+            --glass-blur: 16px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: #05080f; }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #060912;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
             color: #fff;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             height: 100vh;
             width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        #bg-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+        input, textarea { user-select: text; -webkit-user-select: text; }
+        button { font-family: inherit; }
+
+        #bg {
+            position: fixed; inset: 0; z-index: 0;
+            background: linear-gradient(160deg, #05080f 0%, #0b1220 100%);
+            background-size: cover; background-position: center;
+            transition: opacity 0.35s ease;
         }
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-            background: radial-gradient(circle at center, transparent 0%, #060912 100%);
-            pointer-events: none;
+        #bg-tint {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(120% 120% at 50% 38%, transparent 42%, rgba(5,8,15,0.55) 100%),
+                rgba(5,8,15,var(--dim));
         }
-        .container {
-            display: flex; flex-direction: column; align-items: center; z-index: 1; width: 100%;
+        #aurora {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            opacity: 0; transition: opacity 0.5s ease; will-change: transform;
+            background:
+                radial-gradient(40% 35% at 18% 14%, rgba(56,216,255,0.14), transparent 70%),
+                radial-gradient(45% 40% at 82% 86%, rgba(139,92,246,0.14), transparent 70%),
+                radial-gradient(30% 26% at 62% 4%, rgba(56,216,255,0.08), transparent 70%);
         }
+        body.aurora #aurora { opacity: 0.75; animation: auroraDrift 26s ease-in-out infinite alternate; }
+        @keyframes auroraDrift {
+            from { transform: translate3d(-2%, -1%, 0) scale(1); }
+            to   { transform: translate3d(2%, 1.5%, 0) scale(1.05); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            body.aurora #aurora { animation: none; opacity: 0.4; }
+        }
+
+        .glass {
+            background: rgba(10,16,30,0.52);
+            backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+            border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        body.aurora .glass {
+            backdrop-filter: none; -webkit-backdrop-filter: none;
+            background: rgba(10,16,30,0.86);
+        }
+
+        #content {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100%;
+            padding: 72px 24px 92px;
+        }
+        #content > * { flex: none; }
+
+        .hero { text-align: center; }
         .clock {
-            font-size: clamp(64px, 10vw, 120px); font-weight: 200; line-height: 1; text-shadow: 0 4px 24px rgba(0,0,0,0.5);
+            display: flex; align-items: baseline; justify-content: center; gap: 12px;
+            font-size: clamp(64px, 11vw, 132px); font-weight: 200; line-height: 1;
+            letter-spacing: -0.02em; text-shadow: 0 4px 32px rgba(0,0,0,0.45);
         }
+        .ampm { font-size: clamp(18px, 2vw, 26px); font-weight: 400; color: var(--accent); }
         .date {
-            font-size: 16px; color: rgba(255,255,255,0.7); margin-top: 8px; margin-bottom: 4px;
+            margin-top: 12px; font-size: clamp(14px, 1.6vw, 17px); font-weight: 400;
+            letter-spacing: 0.05em; color: rgba(255,255,255,0.72);
         }
         .greeting {
-            font-size: 24px; font-weight: 300; color: rgba(255,255,255,0.9); margin-bottom: 40px;
+            margin-top: 9px; font-size: clamp(20px, 2.6vw, 27px); font-weight: 300;
+            color: rgba(255,255,255,0.92); display: flex; align-items: center; justify-content: center; gap: 10px;
         }
+        .name-edit {
+            background: transparent; border: none; cursor: pointer;
+            color: rgba(255,255,255,0.35); font-size: 0.62em; line-height: 1;
+            opacity: 0; transition: opacity 0.2s, color 0.2s;
+        }
+        .greeting:hover .name-edit { opacity: 1; }
+        .name-edit:hover { color: var(--accent); }
+        .greeting input {
+            background: rgba(255,255,255,0.07); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+            border-radius: 10px; padding: 4px 12px; font-size: 0.78em; font-weight: 400;
+            color: #fff; outline: none; text-align: center; width: 15ch;
+        }
+
         .search-bar {
-            width: min(600px, 85vw); height: 48px; border-radius: 24px;
-            background: rgba(8,12,24,0.55);
-            border: 1px solid rgba(0,212,255,0.15);
-            backdrop-filter: blur(20px);
-            display: flex; align-items: center; padding: 0 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            transition: all 0.3s ease; margin-bottom: 48px;
+            width: min(620px, 92vw); height: 52px; border-radius: 999px;
+            display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px;
+            margin-top: 30px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
         .search-bar:focus-within {
-            background: rgba(8,12,24,0.75); border-color: rgba(0,212,255,0.4);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 2px rgba(0,212,255,0.1);
+            transform: translateY(-1px);
+            border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 1px 0 rgba(255,255,255,0.06);
         }
-        .search-icon {
-            width: 20px; height: 20px; fill: rgba(255,255,255,0.5); margin-right: 12px;
-        }
+        .search-icon { width: 20px; height: 20px; flex: none; fill: rgba(255,255,255,0.55); }
         .search-input {
-            flex: 1; background: transparent; border: none; outline: none; color: white;
-            font-size: 16px; font-family: 'Inter', sans-serif;
+            flex: 1; background: transparent; border: none; outline: none; color: #fff;
+            font-size: 16px; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
         }
-        .search-input::placeholder { color: rgba(255,255,255,0.4); }
-        .mic-icon {
-            width: 20px; height: 20px; fill: rgba(255,255,255,0.5); margin-left: 12px; cursor: pointer;
+        .search-input::placeholder { color: rgba(255,255,255,0.38); }
+        .search-kbd {
+            flex: none; height: 26px; min-width: 26px; padding: 0 9px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.55); font-size: 12px; font-weight: 600;
         }
-        .speed-dial {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; max-width: 800px;
+
+        .quote {
+            margin-top: 16px; max-width: min(600px, 90vw);
+            padding: 10px 22px; border-radius: 999px;
+            display: flex; align-items: center; gap: 12px;
+            font-size: clamp(13px, 1.4vw, 14.5px); font-weight: 300;
+            color: rgba(255,255,255,0.78); line-height: 1.5; text-align: center;
         }
-        @media (max-width: 600px) { .speed-dial { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+        .q-mark { color: var(--accent); font-size: 20px; line-height: 1; flex: none; transform: translateY(-2px); }
+        .q-author { color: rgba(255,255,255,0.45); font-weight: 400; white-space: nowrap; }
+        body.no-quote .quote { display: none; }
+
+        #dials-wrap { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .dials-label {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+        }
+        .speed-dial { display: grid; grid-template-columns: repeat(4, 92px); gap: 18px; }
+        @media (max-width: 560px) { .speed-dial { grid-template-columns: repeat(3, 84px); gap: 14px; } }
+
         .dial-card {
-            width: 110px; height: 110px; border-radius: 16px;
-            background: rgba(8,12,24,0.55); border: 1px solid rgba(0,212,255,0.15);
-            backdrop-filter: blur(20px);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-decoration: none; color: white; transition: all 0.2s ease;
+            width: 92px; aspect-ratio: 1; border-radius: 18px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            text-decoration: none; color: #fff; cursor: pointer; position: relative;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
         }
         .dial-card:hover {
-            transform: translateY(-4px); background: rgba(8,12,24,0.7);
-            border-color: rgba(0,212,255,0.4); box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(0,212,255,0.1);
+            transform: translateY(-4px);
+            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.4), 0 0 18px color-mix(in srgb, var(--accent) 16%, transparent), inset 0 1px 0 rgba(255,255,255,0.06);
         }
-        .dial-icon {
-            width: 40px; height: 40px; margin-bottom: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); font-size: 20px; font-weight: 500;
+        .dial-favicon-wrap {
+            width: 44px; height: 44px; border-radius: 13px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08); overflow: hidden;
         }
-        .dial-icon img { width: 100%; height: 100%; border-radius: 8px; object-fit: contain; }
-        .dial-name { font-size: 12px; font-weight: 400; opacity: 0.8; }
+        .dial-letter {
+            position: absolute; font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.9);
+        }
+        .dial-favicon-wrap img { position: absolute; width: 100%; height: 100%; object-fit: contain; }
+        .dial-name {
+            font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.82);
+            max-width: 100%; padding: 0 6px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .dial-actions {
+            position: absolute; top: -7px; right: -7px; display: flex; gap: 4px;
+            opacity: 0; transition: opacity 0.15s ease; z-index: 2;
+        }
+        .dial-card:hover .dial-actions { opacity: 1; }
+        .dial-btn {
+            width: 23px; height: 23px; border-radius: 50%; cursor: pointer;
+            background: rgba(5,8,15,0.82); border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.85); font-size: 12px; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .dial-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .dial-btn.rm-pending { border-color: #ff6b81; color: #ff6b81; }
+        .dial-add {
+            border-style: dashed; border-color: rgba(255,255,255,0.22);
+            background: rgba(10,16,30,0.3); color: rgba(255,255,255,0.45);
+            cursor: pointer;
+        }
+        .dial-add:hover {
+            transform: translateY(-4px); color: var(--accent);
+            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+        }
+        .dial-add span { font-size: 26px; font-weight: 200; line-height: 1; }
+
+        #gems-wrap {
+            margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+            max-width: min(760px, 94vw);
+        }
+        .gems-row {
+            display: flex; gap: 12px; max-width: 100%; overflow-x: auto;
+            padding: 2px 2px 6px; scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.18) transparent;
+        }
+        .gems-row::-webkit-scrollbar { height: 5px; }
+        .gems-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }
+        .gem-card { width: 74px; gap: 7px; }
+        .gem-card .dial-favicon-wrap { width: 38px; height: 38px; }
+        .gem-card .dial-name { font-size: 10.5px; color: rgba(255,255,255,0.68); }
+
         .dock {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            height: 48px; border-radius: 24px;
-            background: rgba(8,12,24,0.55); border: 1px solid rgba(0,212,255,0.15);
-            backdrop-filter: blur(20px); display: flex; align-items: center; padding: 0 16px; gap: 16px;
+            position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 5;
+            height: 54px; border-radius: 999px;
+            display: flex; align-items: center; gap: 6px; padding: 0 12px;
         }
         .dock-item {
-            width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; text-decoration: none;
+            width: 38px; height: 38px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: background-color 0.15s, transform 0.15s;
         }
-        .dock-item svg { width: 18px; height: 18px; fill: rgba(255,255,255,0.7); }
-        .dock-item:hover { background: rgba(255,255,255,0.1); }
-        .dock-item:hover svg { fill: white; }
-        .wallpaper-picker { position: absolute; top: 20px; right: 20px; }
-        .wp-btn {
-            width: 40px; height: 40px; border-radius: 50%; background: rgba(8,12,24,0.55);
-            border: 1px solid rgba(0,212,255,0.15); backdrop-filter: blur(20px);
-            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+        .dock-item:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+        .dock-item svg { width: 19px; height: 19px; fill: rgba(255,255,255,0.75); }
+        .dock-item:hover svg { fill: #fff; }
+
+        .icon-btn {
+            position: fixed; top: 18px; right: 18px; z-index: 20;
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: transform 0.15s, border-color 0.2s;
         }
-        .wp-btn:hover { background: rgba(8,12,24,0.8); }
-        .wp-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.7); }
-        .wp-menu {
-            position: absolute; top: 50px; right: 0; width: 220px; background: rgba(8,12,24,0.85);
-            border: 1px solid rgba(0,212,255,0.15); backdrop-filter: blur(24px);
-            border-radius: 12px; padding: 16px; display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        .icon-btn:hover { transform: rotate(12deg) scale(1.06); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        body.panel-open .icon-btn { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        .icon-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.75); }
+
+        #customize-panel {
+            position: fixed; top: 68px; right: 18px; z-index: 19;
+            width: 284px; max-height: calc(100vh - 96px); overflow-y: auto;
+            padding: 18px; border-radius: var(--radius-lg);
+            display: none;
         }
-        .wp-menu.show { display: grid; }
-        .wp-swatch { width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
-        .wp-swatch:hover { border-color: rgba(255,255,255,0.5); }
-        .wp-swatch.active { border-color: #00d4ff; }
-        .wp-upload { grid-column: span 3; text-align: center; padding: 8px; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 6px; margin-top: 8px; }
+        body.panel-open #customize-panel { display: block; animation: panelIn 0.22s var(--ease, ease); }
+        @keyframes panelIn { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: none; } }
+        .cp-head { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+        .cp-section { margin-bottom: 16px; }
+        .cp-section > .cp-label {
+            display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45); margin-bottom: 9px;
+        }
+        #swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .swatch {
+            aspect-ratio: 1; border-radius: 10px; cursor: pointer;
+            border: 2px solid transparent; transition: transform 0.12s, border-color 0.15s;
+        }
+        .swatch:hover { transform: scale(1.08); }
+        .swatch.active { border-color: #fff; }
+        .cp-btn {
+            width: 100%; padding: 9px; margin-top: 8px; border-radius: 10px; cursor: pointer;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; font-size: 12.5px;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .cp-btn:hover { background: rgba(255,255,255,0.13); }
+        .cp-btn.primary {
+            background: color-mix(in srgb, var(--accent) 16%, transparent);
+            border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+            color: var(--accent); font-weight: 500;
+        }
+        .cp-btn.danger { color: #ff7d92; border-color: rgba(255,107,129,0.35); }
+        .cp-slider-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            margin-top: 11px; font-size: 12.5px; color: rgba(255,255,255,0.8);
+        }
+        .cp-slider-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+        #accents { display: flex; gap: 10px; }
+        .accent-dot {
+            width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: transform 0.12s, border-color 0.15s;
+        }
+        .accent-dot:hover { transform: scale(1.15); }
+        .accent-dot.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.18); }
+        .cp-input {
+            width: 100%; padding: 9px 12px; border-radius: 10px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; font-size: 13px; font-family: inherit; outline: none;
+        }
+        .cp-input:focus { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        .cp-toggle-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.85); cursor: pointer;
+        }
+        .cp-toggle-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+        #editor-overlay {
+            position: fixed; inset: 0; z-index: 30; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(3,5,10,0.6);
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        #editor-overlay.open { display: flex; animation: fadeIn 0.18s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .editor {
+            width: min(350px, 90vw); padding: 22px; border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .editor h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .editor-actions { display: flex; gap: 8px; margin-top: 4px; }
+        .editor-actions .cp-btn { flex: 1; margin-top: 0; }
+
+        #toast {
+            position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%) translateY(10px); z-index: 40;
+            padding: 9px 18px; border-radius: 999px; font-size: 13px; color: #fff;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @media (max-height: 720px) {
+            #content { padding: 56px 24px 76px; }
+            .clock { font-size: clamp(50px, 8vw, 84px); }
+            .quote { display: none; }
+            .search-bar { margin-top: 22px; }
+            #dials-wrap { margin-top: 22px; }
+            .dock { bottom: 18px; }
+        }
+        @media (max-height: 620px) {
+            .date { display: none; }
+            .greeting { display: none; }
+            #dials-wrap { margin-top: 18px; }
+            #gems-wrap { display: none; }
+        }
     </style>
 </head>
 <body>
-    <canvas id="bg-canvas"></canvas>
-    <div id="overlay"></div>
-    
-    <div class="wallpaper-picker">
-        <div class="wp-btn" id="wp-btn" title="Change Background">
-            <svg viewBox="0 0 24 24"><path d="M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19M8.5,13.5L11,16.5L14.5,12L19,18H5L8.5,13.5Z" /></svg>
+    <div id="bg"></div>
+    <div id="bg-tint"></div>
+    <div id="aurora"></div>
+
+    <button class="icon-btn glass" id="btn-customize" title="Customize">
+        <svg viewBox="0 0 24 24"><path d="M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21C13.66,21 15,19.66 15,18C15,17.56 14.83,17.18 14.56,16.9C14.29,16.61 14.13,16.23 14.13,15.77C14.13,14.71 15.02,13.82 16.08,13.82H18.5C20.43,13.82 22,12.25 22,10.32C22,6.28 17.5,3 12,3M7.5,12A1.5,1.5 0 0,1 6,10.5A1.5,1.5 0 0,1 7.5,9A1.5,1.5 0 0,1 9,10.5A1.5,1.5 0 0,1 7.5,12M10.5,8A1.5,1.5 0 0,1 9,6.5A1.5,1.5 0 0,1 10.5,5A1.5,1.5 0 0,1 12,6.5A1.5,1.5 0 0,1 10.5,8M15.5,8A1.5,1.5 0 0,1 14,6.5A1.5,1.5 0 0,1 15.5,5A1.5,1.5 0 0,1 17,6.5A1.5,1.5 0 0,1 15.5,8Z" /></svg>
+    </button>
+
+    <div id="customize-panel" class="glass">
+        <div class="cp-head">Customize</div>
+        <div class="cp-section">
+            <span class="cp-label">Wallpaper</span>
+            <div id="swatches"></div>
+            <button class="cp-btn" id="btn-upload">Upload image</button>
+            <input type="file" id="file-input" accept="image/*" hidden>
+            <div class="cp-slider-row"><span>Dim</span><input type="range" id="slider-dim" min="0" max="80" value="28"></div>
+            <div class="cp-slider-row"><span>Glass blur</span><input type="range" id="slider-blur" min="0" max="28" value="16"></div>
         </div>
-        <div class="wp-menu" id="wp-menu">
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #060912, #1a1a2e)" data-bg="gradient-1"></div>
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364)" data-bg="gradient-2"></div>
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #141e30, #243b55)" data-bg="gradient-3"></div>
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #4b134f, #c94b4b)" data-bg="gradient-4"></div>
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #000000, #434343)" data-bg="gradient-5"></div>
-            <div class="wp-swatch" style="background: linear-gradient(135deg, #0f0c29, #302b63, #24243e)" data-bg="gradient-6"></div>
-            <div class="wp-upload" id="wp-upload">Upload Image</div>
-            <input type="file" id="wp-file" style="display:none" accept="image/*">
+        <div class="cp-section">
+            <span class="cp-label">Accent</span>
+            <div id="accents"></div>
         </div>
+        <div class="cp-section">
+            <span class="cp-label">Display name</span>
+            <input type="text" class="cp-input" id="cp-name" maxlength="24" placeholder="Your name">
+        </div>
+        <div class="cp-section">
+            <label class="cp-toggle-row"><span>Daily quote</span><input type="checkbox" id="cp-quote" checked></label>
+            <label class="cp-toggle-row"><span>Ambient aurora</span><input type="checkbox" id="cp-aurora"></label>
+        </div>
+        <button class="cp-btn danger" id="btn-reset">Reset to defaults</button>
     </div>
 
-    <div class="container">
-        <div class="clock" id="clock">00:00</div>
-        <div class="date" id="date">Monday, January 1</div>
-        <div class="greeting" id="greeting">Good Morning, Shiva</div>
-        
-        <div class="search-bar">
+    <main id="content">
+        <div class="hero">
+            <div class="clock"><span id="time">00:00</span><span class="ampm" id="ampm">AM</span></div>
+            <div class="date" id="date">Saturday, January 1</div>
+            <div class="greeting">
+                <span id="greeting-text">Good Morning, Shiva</span>
+                <button class="name-edit" id="btn-name-edit" title="Edit name">✎</button>
+            </div>
+        </div>
+
+        <div class="search-bar glass" id="search-bar">
             <svg class="search-icon" viewBox="0 0 24 24"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" /></svg>
-            <input type="text" class="search-input" id="search-input" placeholder="Search Google or type a URL..." autocomplete="off">
-            <svg class="mic-icon" viewBox="0 0 24 24"><path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" /></svg>
+            <input type="text" class="search-input" id="search-input" placeholder="Search Google or type a URL..." autocomplete="off" spellcheck="false">
+            <span class="search-kbd" id="search-engine" title="Search engine">G</span>
         </div>
 
-        <div class="speed-dial" id="speed-dial">
-            <!-- Populated by JS -->
+        <div class="quote glass" id="quote">
+            <span class="q-mark">❝</span>
+            <span id="quote-text">Every day is a new beginning.</span>
+            <span class="q-author" id="quote-author"></span>
+        </div>
+
+        <div id="dials-wrap">
+            <div class="dials-label">Quick Access</div>
+            <div class="speed-dial" id="speed-dial"></div>
+        </div>
+
+        <div id="gems-wrap">
+            <div class="dials-label">Hidden Gems · free stuff &amp; VPNs</div>
+            <div class="gems-row" id="gems-row"></div>
+        </div>
+    </main>
+
+    <div class="dock glass" id="dock">
+        <a href="javascript:void(0)" class="dock-item" data-panel="bookmarks" title="Bookmarks"><svg viewBox="0 0 24 24"><path d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5A2,2 0 0,0 17,3Z" /></svg></a>
+        <a href="javascript:void(0)" class="dock-item" data-panel="history" title="History"><svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" /></svg></a>
+        <a href="javascript:void(0)" class="dock-item" data-panel="settings" title="Settings"><svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg></a>
+    </div>
+
+    <div id="editor-overlay">
+        <div class="editor glass">
+            <h3 id="editor-title">Add shortcut</h3>
+            <input type="text" class="cp-input" id="ed-name" placeholder="Name" maxlength="32">
+            <input type="text" class="cp-input" id="ed-url" placeholder="https://example.com" spellcheck="false">
+            <div class="editor-actions">
+                <button class="cp-btn" id="ed-cancel">Cancel</button>
+                <button class="cp-btn primary" id="ed-save">Save</button>
+            </div>
         </div>
     </div>
 
-    <div class="dock">
-        <a href="about:blank" class="dock-item" title="Bookmarks"><svg viewBox="0 0 24 24"><path d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5A2,2 0 0,0 17,3Z" /></svg></a>
-        <a href="about:blank" class="dock-item" title="History"><svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" /></svg></a>
-        <a href="#" class="dock-item" title="Settings"><svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg></a>
-    </div>
+    <div id="toast" class="glass"></div>
 
     <script>
-        // Clock & Date
-        function updateTime() {
-            const now = new Date();
-            let h = now.getHours();
-            let m = now.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const hr = h % 12 || 12;
-            document.getElementById('clock').textContent = `${hr.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            
-            const options = { weekday: 'long', month: 'long', day: 'numeric' };
-            document.getElementById('date').textContent = now.toLocaleDateString('en-US', options);
+        var $ = function (id) { return document.getElementById(id); };
 
-            let greet = 'Evening';
-            if (h < 12) greet = 'Morning';
-            else if (h < 17) greet = 'Afternoon';
-            document.getElementById('greeting').textContent = `Good ${greet}, Shiva`;
-        }
-        setInterval(updateTime, 1000);
-        updateTime();
-
-        // Search
-        const searchInput = document.getElementById('search-input');
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const val = searchInput.value.trim();
-                if (!val) return;
-                if (/^(https?:\/\/|[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$)/i.test(val)) {
-                    let url = val;
-                    if (!url.startsWith('http')) url = 'https://' + url;
-                    window.location.href = url;
-                } else {
-                    window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(val);
-                }
-            }
-        });
-        searchInput.focus();
-
-        // Speed Dial
-        const dials = [
+        var GRADIENTS = [
+            ['Abyss', 'linear-gradient(160deg, #05080f 0%, #0b1220 100%)'],
+            ['Slime', 'linear-gradient(135deg, #38d9ff 0%, #8b5cf6 100%)'],
+            ['Deep Ocean', 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)'],
+            ['Midnight', 'linear-gradient(135deg, #141e30 0%, #243b55 100%)'],
+            ['Nebula', 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)'],
+            ['Ember', 'linear-gradient(135deg, #4b134f 0%, #c94b4b 100%)'],
+            ['Void', 'linear-gradient(135deg, #000000 0%, #434343 100%)'],
+            ['Forest', 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)'],
+            ['Royal', 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)'],
+            ['Violet', 'linear-gradient(135deg, #42275a 0%, #734b6d 100%)']
+        ];
+        var ACCENTS = ['#38d9ff', '#8b5cf6', '#ffd54a', '#34d399', '#ff6b81'];
+        var QUOTES = [
+            ['Simplicity is the ultimate sophistication.', 'Leonardo da Vinci'],
+            ['Well begun is half done.', 'Aristotle'],
+            ['The secret of getting ahead is getting started.', 'Mark Twain'],
+            ['It always seems impossible until it is done.', 'Nelson Mandela'],
+            ['Small steps every day lead to big results.'],
+            ['Focus on the journey, not the destination.'],
+            ['Do what you can, with what you have, where you are.', 'T. Roosevelt'],
+            ['A smooth sea never made a skilled sailor.'],
+            ['The best way to predict the future is to create it.', 'P. Drucker'],
+            ['Done is better than perfect.'],
+            ['Curiosity is the wick in the candle of learning.', 'W. Durant'],
+            ['The expert in anything was once a beginner.', 'H. Aron'],
+            ['Your only limit is your mind.'],
+            ['Every day is a new beginning.'],
+            ['Discipline is choosing what you want most over what you want now.'],
+            ['Less, but better.', 'Dieter Rams']
+        ];
+        var DEFAULT_DIALS = [
             { name: 'Google', url: 'https://www.google.com', domain: 'google.com' },
             { name: 'YouTube', url: 'https://www.youtube.com', domain: 'youtube.com' },
             { name: 'GitHub', url: 'https://github.com', domain: 'github.com' },
@@ -205,145 +465,502 @@
             { name: 'Wikipedia', url: 'https://www.wikipedia.org', domain: 'wikipedia.org' },
             { name: 'ChatGPT', url: 'https://chatgpt.com', domain: 'chatgpt.com' }
         ];
-        
-        const dialContainer = document.getElementById('speed-dial');
-        dials.forEach(d => {
-            const a = document.createElement('a');
-            a.href = d.url;
-            a.className = 'dial-card';
-            const firstLetter = d.name.charAt(0);
-            const favUrl = `https://www.google.com/s2/favicons?domain=${d.domain}&sz=64`;
-            a.innerHTML = `
-                <div class="dial-icon">
-                    <img src="${favUrl}" alt="${firstLetter}" onerror="this.style.display='none'; this.parentElement.innerText='${firstLetter}'" />
-                </div>
-                <div class="dial-name">${d.name}</div>
-            `;
-            dialContainer.appendChild(a);
-        });
+        var HIDDEN_GEMS = [
+            { name: 'FMHY', url: 'https://fmhy.net', blurb: 'freemediaheckyeah — the internet\'s biggest free-stuff wiki (~30k links)' },
+            { name: 'Couch Potato', url: 'https://tbcpl.lol', blurb: 'free streaming directory: movies, TV, anime, manga, live TV, sports' },
+            { name: 'Proton VPN', url: 'https://protonvpn.com', blurb: 'free VPN with unlimited data and no ads' },
+            { name: 'Windscribe', url: 'https://windscribe.com', blurb: 'free VPN · 10 GB/month · P2P allowed' },
+            { name: 'PrivadoVPN', url: 'https://privadovpn.com', blurb: 'free VPN · 10 GB/month · P2P allowed' },
+            { name: 'Mullvad', url: 'https://mullvad.net', blurb: 'anonymous VPN · pay with cash or crypto · no email needed' },
+            { name: 'VesselFinder', url: 'https://www.vesselfinder.com', blurb: 'live ship tracking across the world' },
+            { name: 'ADS-B Exchange', url: 'https://globe.adsbexchange.com', blurb: 'free live flight radar, no ads' },
+            { name: 'Metadata2Go', url: 'https://www.metadata2go.com', blurb: 'reveal hidden metadata inside photos, PDFs and files' },
+            { name: 'Web Academy', url: 'https://portswigger.net/web-security', blurb: 'free ethical-hacking & security training' },
+            { name: 'CryptPad', url: 'https://cryptpad.fr', blurb: 'private, end-to-end encrypted docs, sheets and pads' }
+        ];
+        var DEFAULTS = {
+            bgType: 'gradient',
+            bgIndex: 0,
+            bgVal: '',
+            dim: 0.28,
+            blur: 16,
+            accent: '#38d9ff',
+            name: 'Shiva',
+            showQuote: true,
+            aurora: false,
+            dials: DEFAULT_DIALS
+        };
+        var state;
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var editingIndex = null;
+        var pendingRemove = null;
+        var pendingRemoveTimer = null;
+        var toastTimer = null;
 
-        // Wallpaper Picker
-        const wpBtn = document.getElementById('wp-btn');
-        const wpMenu = document.getElementById('wp-menu');
-        const wpFile = document.getElementById('wp-file');
-        const wpUpload = document.getElementById('wp-upload');
-        const overlay = document.getElementById('overlay');
-        const canvas = document.getElementById('bg-canvas');
-
-        wpBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            wpMenu.classList.toggle('show');
-        });
-        document.addEventListener('click', (e) => {
-            if (!wpMenu.contains(e.target) && !wpBtn.contains(e.target)) {
-                wpMenu.classList.remove('show');
-            }
-        });
-
-        function setBg(type, val) {
-            if (type === 'gradient') {
-                document.body.style.backgroundImage = val;
-                document.body.style.backgroundSize = 'cover';
-                canvas.style.opacity = '0.3'; 
-            } else if (type === 'image') {
-                document.body.style.backgroundImage = `url(${val})`;
-                document.body.style.backgroundSize = 'cover';
-                document.body.style.backgroundPosition = 'center';
-                canvas.style.opacity = '0';
-            } else {
-                document.body.style.backgroundImage = '';
-                canvas.style.opacity = '1';
-            }
-            localStorage.setItem('black_nt_bg_type', type);
-            localStorage.setItem('black_nt_bg_val', val);
-        }
-
-        document.querySelectorAll('.wp-swatch').forEach(sw => {
-            sw.addEventListener('click', () => {
-                setBg('gradient', sw.style.background);
-                wpMenu.classList.remove('show');
-            });
-        });
-
-        wpUpload.addEventListener('click', () => wpFile.click());
-        wpFile.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    setBg('image', ev.target.result);
-                    wpMenu.classList.remove('show');
-                };
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
-
-        // Init BG
-        const savedType = localStorage.getItem('black_nt_bg_type');
-        const savedVal = localStorage.getItem('black_nt_bg_val');
-        if (savedType && savedVal) {
-            setBg(savedType, savedVal);
-        }
-
-        // Animated Canvas Mesh
-        const ctx = canvas.getContext('2d');
-        let width, height;
-        let particles = [];
-        
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
-                this.radius = Math.random() * 2 + 1;
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
-                ctx.fill();
-            }
-        }
-
-        for (let i = 0; i < 80; i++) particles.push(new Particle());
-
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (dist < 150) {
-                        ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = `rgba(0, 212, 255, ${0.15 - dist/1000})`;
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
+        function loadState() {
+            var s = null;
+            try { s = JSON.parse(localStorage.getItem('black_nt_state')); } catch (e) { s = null; }
+            if (!s) {
+                var oldType = localStorage.getItem('black_nt_bg_type');
+                var oldVal = localStorage.getItem('black_nt_bg_val');
+                s = {};
+                if (oldType === 'image' && oldVal && oldVal.indexOf('data:') === 0) {
+                    s.bgType = 'image'; s.bgVal = oldVal;
+                } else if (oldType === 'gradient') {
+                    for (var i = 0; i < GRADIENTS.length; i++) {
+                        if (GRADIENTS[i][1] === oldVal) { s.bgIndex = i; break; }
                     }
                 }
             }
-            requestAnimationFrame(animate);
+            state = {};
+            for (var k in DEFAULTS) state[k] = DEFAULTS[k];
+            for (var k2 in s) if (s[k2] !== undefined && s[k2] !== null) state[k2] = s[k2];
+            if (state.bgType === 'gradient') state.bgIndex = Math.min(Math.max(state.bgIndex | 0, 0), GRADIENTS.length - 1);
+            if (!Array.isArray(state.dials)) state.dials = DEFAULT_DIALS.slice();
+            if (state.dials.length > 8) state.dials = state.dials.slice(0, 8);
         }
-        animate();
+
+        function saveState() {
+            try { localStorage.setItem('black_nt_state', JSON.stringify(state)); } catch (e) {}
+        }
+
+        function applyState() {
+            var root = document.documentElement.style;
+            root.setProperty('--accent', state.accent);
+            root.setProperty('--dim', String(state.dim));
+            root.setProperty('--glass-blur', state.blur + 'px');
+            document.body.classList.toggle('aurora', state.aurora && !reduceMotion);
+            document.body.classList.toggle('no-quote', !state.showQuote);
+            var bg = $('bg');
+            if (state.bgType === 'image' && state.bgVal) {
+                bg.style.backgroundImage = 'url("' + state.bgVal + '")';
+            } else {
+                bg.style.backgroundImage = GRADIENTS[state.bgIndex][1];
+            }
+            renderSwatches();
+            renderAccents();
+            renderDials();
+            renderGems();
+            $('slider-dim').value = Math.round(state.dim * 100);
+            $('slider-blur').value = state.blur;
+            $('cp-name').value = state.name;
+            $('cp-quote').checked = state.showQuote;
+            $('cp-aurora').checked = state.aurora;
+            $('cp-aurora').disabled = reduceMotion;
+            renderQuote();
+            updateTime();
+        }
+
+        function renderSwatches() {
+            var wrap = $('swatches');
+            wrap.innerHTML = '';
+            GRADIENTS.forEach(function (g, i) {
+                var d = document.createElement('div');
+                d.className = 'swatch' + (state.bgType === 'gradient' && state.bgIndex === i ? ' active' : '');
+                d.style.background = g[1];
+                d.title = g[0];
+                d.addEventListener('click', function () {
+                    state.bgType = 'gradient';
+                    state.bgIndex = i;
+                    applyState();
+                    saveState();
+                });
+                wrap.appendChild(d);
+            });
+        }
+
+        function renderAccents() {
+            var wrap = $('accents');
+            wrap.innerHTML = '';
+            ACCENTS.forEach(function (c) {
+                var d = document.createElement('div');
+                d.className = 'accent-dot' + (state.accent === c ? ' active' : '');
+                d.style.background = c;
+                d.title = c;
+                d.addEventListener('click', function () {
+                    state.accent = c;
+                    applyState();
+                    saveState();
+                });
+                wrap.appendChild(d);
+            });
+        }
+
+        function renderQuote() {
+            var now = new Date();
+            var dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+            var q = QUOTES[dayOfYear % QUOTES.length];
+            $('quote-text').textContent = q[0];
+            $('quote-author').textContent = q[1] ? '— ' + q[1] : '';
+        }
+
+        function updateTime() {
+            var now = new Date();
+            var h = now.getHours();
+            var m = now.getMinutes();
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            var hr = h % 12 || 12;
+            $('time').textContent = (hr < 10 ? '0' : '') + hr + ':' + (m < 10 ? '0' : '') + m;
+            $('ampm').textContent = ampm;
+            $('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            var greet = h < 12 ? 'Morning' : (h < 17 ? 'Afternoon' : 'Evening');
+            $('greeting-text').textContent = 'Good ' + greet + ', ' + (state.name || 'there');
+        }
+
+        function domainOf(url) {
+            try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
+        }
+
+        function letterOf(name) {
+            return (name || '?').charAt(0).toUpperCase();
+        }
+
+        function renderDials() {
+            var wrap = $('speed-dial');
+            wrap.innerHTML = '';
+            state.dials.forEach(function (d, i) {
+                var card = document.createElement('div');
+                card.className = 'dial-card glass';
+                card.title = d.url;
+                var actions = document.createElement('div');
+                actions.className = 'dial-actions';
+                var ed = document.createElement('button');
+                ed.className = 'dial-btn';
+                ed.textContent = '✎';
+                ed.title = 'Edit';
+                ed.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    openEditor(i);
+                });
+                var rm = document.createElement('button');
+                rm.className = 'dial-btn' + (pendingRemove === i ? ' rm-pending' : '');
+                rm.textContent = pendingRemove === i ? 'Sure?' : '×';
+                rm.title = 'Remove';
+                rm.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    removeDial(i, rm);
+                });
+                actions.appendChild(ed);
+                actions.appendChild(rm);
+                var iconWrap = document.createElement('div');
+                iconWrap.className = 'dial-favicon-wrap';
+                var letter = document.createElement('span');
+                letter.className = 'dial-letter';
+                letter.textContent = letterOf(d.name);
+                var img = document.createElement('img');
+                img.alt = '';
+                img.loading = 'lazy';
+                img.onerror = function () { this.style.display = 'none'; };
+                img.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d.domain || domainOf(d.url)) + '&sz=64';
+                iconWrap.appendChild(letter);
+                iconWrap.appendChild(img);
+                var name = document.createElement('div');
+                name.className = 'dial-name';
+                name.textContent = d.name;
+                card.appendChild(actions);
+                card.appendChild(iconWrap);
+                card.appendChild(name);
+                card.addEventListener('click', function () {
+                    window.location.href = d.url;
+                });
+                card.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') window.location.href = d.url;
+                });
+                card.tabIndex = 0;
+                wrap.appendChild(card);
+            });
+            var add = document.createElement('div');
+            add.className = 'dial-card glass dial-add';
+            add.title = 'Add shortcut';
+            add.innerHTML = '<span>+</span>';
+            add.addEventListener('click', function () { openEditor(null); });
+            if (state.dials.length < 8) wrap.appendChild(add);
+        }
+
+        function renderGems() {
+            var wrap = $('gems-row');
+            wrap.innerHTML = '';
+            HIDDEN_GEMS.forEach(function (g) {
+                var card = document.createElement('div');
+                card.className = 'dial-card glass gem-card';
+                card.title = g.blurb;
+                var iconWrap = document.createElement('div');
+                iconWrap.className = 'dial-favicon-wrap';
+                var letter = document.createElement('span');
+                letter.className = 'dial-letter';
+                letter.textContent = letterOf(g.name);
+                var img = document.createElement('img');
+                img.alt = '';
+                img.loading = 'lazy';
+                img.onerror = function () { this.style.display = 'none'; };
+                img.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domainOf(g.url)) + '&sz=64';
+                iconWrap.appendChild(letter);
+                iconWrap.appendChild(img);
+                var name = document.createElement('div');
+                name.className = 'dial-name';
+                name.textContent = g.name;
+                card.appendChild(iconWrap);
+                card.appendChild(name);
+                card.addEventListener('click', function () { window.location.href = g.url; });
+                card.addEventListener('keydown', function (e) { if (e.key === 'Enter') window.location.href = g.url; });
+                card.tabIndex = 0;
+                wrap.appendChild(card);
+            });
+        }
+
+        function openEditor(index) {
+            editingIndex = index === undefined ? null : index;
+            $('editor-title').textContent = index === null ? 'Add shortcut' : 'Edit shortcut';
+            $('ed-name').value = '';
+            $('ed-url').value = '';
+            if (index !== null) {
+                var d = state.dials[index];
+                if (d) {
+                    $('ed-name').value = d.name;
+                    $('ed-url').value = d.url;
+                }
+            }
+            $('editor-overlay').classList.add('open');
+            $('ed-name').focus();
+        }
+
+        function closeEditor() {
+            $('editor-overlay').classList.remove('open');
+            editingIndex = null;
+        }
+
+        function saveEditor() {
+            var name = $('ed-name').value.trim();
+            var url = $('ed-url').value.trim();
+            if (!url) { toast('Enter a URL'); return; }
+            if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = 'https://' + url;
+            if (!name) name = domainOf(url);
+            var dial = { name: name, url: url, domain: domainOf(url) };
+            if (editingIndex !== null && state.dials[editingIndex]) state.dials[editingIndex] = dial;
+            else if (state.dials.length >= 8) { toast('Maximum 8 shortcuts'); return; }
+            else state.dials.push(dial);
+            saveState();
+            renderDials();
+            closeEditor();
+            toast(editingIndex !== null ? 'Shortcut updated' : 'Shortcut added');
+        }
+
+        function removeDial(index, btn) {
+            if (pendingRemove === index) {
+                state.dials.splice(index, 1);
+                saveState();
+                renderDials();
+                pendingRemove = null;
+                toast('Shortcut removed');
+                return;
+            }
+            pendingRemove = index;
+            btn.textContent = 'Sure?';
+            btn.classList.add('rm-pending');
+            clearTimeout(pendingRemoveTimer);
+            pendingRemoveTimer = setTimeout(function () {
+                pendingRemove = null;
+                renderDials();
+            }, 2500);
+        }
+
+        function toast(msg) {
+            var t = $('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+        }
+
+        function compressImage(file) {
+            return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var img = new Image();
+                    img.onload = function () {
+                        var maxW = 1600;
+                        var scale = Math.min(1, maxW / img.width);
+                        var w = Math.round(img.width * scale);
+                        var h = Math.round(img.height * scale);
+                        var canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        var ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#05080f';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.82));
+                    };
+                    img.onerror = function () { reject(new Error('Bad image')); };
+                    img.src = reader.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function startNameEdit() {
+            var g = $('greeting');
+            var input = document.createElement('input');
+            input.value = state.name;
+            g.replaceChildren(input);
+            input.focus();
+            input.select();
+            var done = function (save) {
+                if (save) {
+                    var v = input.value.trim();
+                    state.name = v || 'Shiva';
+                    saveState();
+                    updateTime();
+                } else {
+                    updateTime();
+                }
+            };
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { done(true); }
+                else if (e.key === 'Escape') { done(false); }
+            });
+            input.addEventListener('blur', function () { done(true); });
+        }
+
+        var searchUrl = 'https://www.google.com/search?q=';
+        var engineNames = { google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo' };
+        var engineLetters = { google: 'G', bing: 'B', duckduckgo: 'D' };
+
+        function setEngine(engine) {
+            var map = {
+                google: 'https://www.google.com/search?q=',
+                bing: 'https://www.bing.com/search?q=',
+                duckduckgo: 'https://duckduckgo.com/?q='
+            };
+            if (map[engine]) {
+                searchUrl = map[engine];
+                var input = $('search-input');
+                input.placeholder = 'Search ' + (engineNames[engine] || 'the web') + ' or type a URL...';
+                $('search-engine').textContent = engineLetters[engine] || 'G';
+                $('search-engine').title = engineNames[engine] || 'Search engine';
+            }
+        }
+
+        if (window.api && window.api.loadSettings) {
+            window.api.loadSettings().then(function (s) {
+                if (s && s.searchEngine) setEngine(s.searchEngine);
+            }).catch(function () {});
+        }
+
+        $('search-input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                var val = $('search-input').value.trim();
+                if (!val) return;
+                var url;
+                if (/^(https?:\/\/|[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$)/i.test(val)) {
+                    url = val;
+                    if (!url.startsWith('http')) url = 'https://' + url;
+                } else {
+                    url = searchUrl + encodeURIComponent(val);
+                }
+                window.location.href = url;
+            }
+        });
+
+        document.querySelectorAll('.dock-item[data-panel]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (window.api && window.api.openPanel) window.api.openPanel(el.dataset.panel);
+            });
+        });
+
+        $('btn-customize').addEventListener('click', function (e) {
+            e.stopPropagation();
+            document.body.classList.toggle('panel-open');
+        });
+        document.addEventListener('click', function (e) {
+            var panel = $('customize-panel');
+            if (document.body.classList.contains('panel-open') &&
+                !panel.contains(e.target) && e.target.id !== 'btn-customize') {
+                document.body.classList.remove('panel-open');
+            }
+        });
+
+        $('slider-dim').addEventListener('input', function () {
+            state.dim = parseInt(this.value, 10) / 100;
+            document.documentElement.style.setProperty('--dim', String(state.dim));
+            saveState();
+        });
+        $('slider-blur').addEventListener('input', function () {
+            state.blur = parseInt(this.value, 10);
+            document.documentElement.style.setProperty('--glass-blur', state.blur + 'px');
+            saveState();
+        });
+        $('cp-name').addEventListener('input', function () {
+            state.name = this.value.trim() || 'Shiva';
+            updateTime();
+            saveState();
+        });
+        $('cp-quote').addEventListener('change', function () {
+            state.showQuote = this.checked;
+            document.body.classList.toggle('no-quote', !state.showQuote);
+            saveState();
+        });
+        $('cp-aurora').addEventListener('change', function () {
+            state.aurora = this.checked;
+            document.body.classList.toggle('aurora', state.aurora && !reduceMotion);
+            saveState();
+        });
+        $('btn-reset').addEventListener('click', function () {
+            state = {};
+            for (var k in DEFAULTS) state[k] = DEFAULTS[k];
+            state.dials = DEFAULT_DIALS.slice();
+            saveState();
+            applyState();
+            toast('Defaults restored');
+        });
+
+        $('btn-upload').addEventListener('click', function () { $('file-input').click(); });
+        $('file-input').addEventListener('change', function () {
+            var f = this.files && this.files[0];
+            if (!f) return;
+            compressImage(f).then(function (dataUrl) {
+                state.bgType = 'image';
+                state.bgVal = dataUrl;
+                applyState();
+                saveState();
+                toast('Wallpaper applied');
+            }).catch(function () {
+                toast('Could not load that image');
+            });
+            this.value = '';
+        });
+
+        $('btn-name-edit').addEventListener('click', startNameEdit);
+
+        $('ed-cancel').addEventListener('click', closeEditor);
+        $('ed-save').addEventListener('click', saveEditor);
+        $('editor-overlay').addEventListener('click', function (e) {
+            if (e.target === this) closeEditor();
+        });
+        $('ed-url').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') saveEditor();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                if ($('editor-overlay').classList.contains('open')) closeEditor();
+                document.body.classList.remove('panel-open');
+            }
+            if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+                e.preventDefault();
+                $('search-input').focus();
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                $('search-input').focus();
+            }
+        });
+
+        loadState();
+        applyState();
+        setInterval(updateTime, 1000);
+        $('search-input').focus();
     </script>
 </body>
 </html>

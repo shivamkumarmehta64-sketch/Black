@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld('api', {
   // ── Window ──
   toggleFullscreen: ()           => ipcRenderer.invoke('toggle-fullscreen'),
   setFullscreen:    (fs)         => ipcRenderer.invoke('set-fullscreen', fs),
+  closeWindow:      ()           => ipcRenderer.invoke('close-window'),
+  openPanel:        (panel)      => ipcRenderer.send('open-panel', panel),
+  onOpenPanel:      (cb)         => ipcRenderer.on('open-panel', (_e, panel) => cb(panel)),
+  newWindow:        (incognito)  => ipcRenderer.invoke('new-window', !!incognito),
+  isIncognito:      ()           => process.argv.includes('--black-incognito'),
 
   // ── Navigation ──
   navigateRequest:  (tabId, url) => ipcRenderer.invoke('navigate-request', tabId, url),
@@ -31,6 +36,22 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── Privacy / Ad-blocking ──
   onBlockedCount:   (cb)         => ipcRenderer.on('blocked-count', (_e, count) => cb(count)),
+  shieldsStatus:    ()           => ipcRenderer.invoke('shields-status'),
+  setShields:       (enabled)    => ipcRenderer.invoke('shields-set', enabled),
+
+  // ── Extensions (Chromium) ──
+  extList:          ()           => ipcRenderer.invoke('ext-list'),
+  extLoadDialog:    ()           => ipcRenderer.invoke('ext-load-dialog'),
+  extLoad:          (dir)        => ipcRenderer.invoke('ext-load', dir),
+  extRemove:        (id)         => ipcRenderer.invoke('ext-remove', id),
+
+  // ── Web capture & PDF ──
+  webScreenshot:    (wcId)       => ipcRenderer.invoke('web-screenshot', wcId),
+  printPdf:         (wcId)       => ipcRenderer.invoke('print-pdf', wcId),
+
+  // ── Reading list ──
+  loadReading:      ()           => ipcRenderer.invoke('load-reading'),
+  saveReading:      (data)       => ipcRenderer.invoke('save-reading', data),
 
   // ── Password Manager ──
   pmHasMaster:      ()           => ipcRenderer.invoke('pm-has-master'),
@@ -41,4 +62,25 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── Memory ──
   gcCollect:        ()           => ipcRenderer.invoke('gc-collect'),
+
+  // ── AI Assistant (Great Sage) ──
+  aiChatStart:      (payload)    => ipcRenderer.invoke('ai-chat-start', payload),
+  aiChatStop:       ()           => ipcRenderer.send('ai-chat-stop'),
+  onAiChunk:        (cb)         => ipcRenderer.on('ai-chunk', (_e, d) => cb(d)),
+
+  // ── Stability: memory-pressure notifications from main ──
+  onMemoryPressure: (cb)         => ipcRenderer.on('memory-pressure', (_e, mb) => cb(mb)),
+
+  // ── Site Advisor (McAfee WebAdvisor style) ──
+  advisorStatus:    ()           => ipcRenderer.invoke('advisor-status'),
+  advisorBlock:     (url)        => ipcRenderer.invoke('advisor-block', url),
+  advisorProceed:   (url)        => ipcRenderer.invoke('advisor-proceed', url),
+  onAdvisorBlocked: (cb)         => ipcRenderer.on('advisor-blocked', (_e, d) => cb(d)),
+
+  // ── OSINT self-check tools (Great Sage) ──
+  osintCheck:       (type, param) => ipcRenderer.invoke('osint-check', type, param),
+  securityNotify:   (title, body) => ipcRenderer.invoke('security-notify', title, body),
+
+  // ── Real SSD health (SMART) ──
+  ssdHealth:        (force)      => ipcRenderer.invoke('ssd-health', !!force),
 });

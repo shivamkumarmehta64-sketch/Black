@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "description": "Curated Site Advisor blocklist (McAfee WebAdvisor style). Add your own entries via Menu → Block this site.",
+  "rules": [
+    { "category": "scam", "rule": "get-free-recharge.in" },
+    { "category": "scam", "rule": "kbc-lottery-winner.com" },
+    { "category": "scam", "rule": "winnings-compensation.org" },
+    { "category": "phishing", "rule": "appleid-verify.info" },
+    { "category": "phishing", "rule": "paypal-account-alert.com" },
+    { "category": "phishing", "rule": "netflix-billing-support.com" },
+    { "category": "phishing", "rule": "gst-refund-portal.com" },
+    { "category": "phishing", "rule": "incometax-refund.in" },
+    { "category": "phishing", "rule": "digilocker-verify.in" },
+    { "category": "phishing", "rule": "aadhaar-otp-verify.in" },
+    { "category": "phishing", "rule": "epfo-claim-link.in" },
+    { "category": "phishing", "rule": "passport-seva-appointment.in" },
+    { "category": "phishing", "rule": "pan-card-update.info" },
+    { "category": "phishing", "rule": "cibil-score-offer.com" },
+    { "category": "scam", "rule": "work-from-home-lakhs.in" },
+    { "category": "scam", "rule": "bitcoin-doubling.app" },
+    { "category": "scam", "rule": "crypto-giveaway-official.com" },
+    { "category": "malware", "rule": "free-software-crack.download" },
+    { "category": "malware", "rule": "apk-update-hub.net" },
+    { "category": "malware", "rule": "driver-fix-scan.pro" },
+    { "category": "scam", "rule": "tech-support-helpdesk.live" },
+    { "category": "scam", "rule": "virus-alert-24x7.com" },
+    { "category": "scam", "rule": "windows-security-renew.in" },
+    { "category": "phishing", "rule": "whatsapp-web-verify.in" },
+    { "category": "phishing", "rule": "facebook-security-check.in" },
+    { "category": "tracker", "rule": "ads-pixel-tracker.biz" },
+    { "category": "tracker", "rule": "supercookie-sync.net" }
+  ]
+}

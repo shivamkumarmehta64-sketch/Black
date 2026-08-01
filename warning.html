@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dangerous Site — Black Site Advisor</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+        background: #0b0f18; color: #e8f0fb; min-height: 100vh;
+        display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .card {
+        max-width: 560px; width: 100%; background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,107,129,0.35); border-radius: 18px; padding: 40px 36px;
+        text-align: center; backdrop-filter: blur(18px);
+    }
+    .icon { font-size: 58px; line-height: 1; margin-bottom: 16px; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 10px; color: #ff6b81; }
+    .sub { font-size: 14px; color: #93a7c4; line-height: 1.6; margin-bottom: 8px; }
+    .url {
+        font-size: 13px; color: #ffb3c0; background: rgba(255,107,129,0.1);
+        border: 1px solid rgba(255,107,129,0.25); border-radius: 8px;
+        padding: 8px 12px; margin: 14px 0; word-break: break-all;
+    }
+    .badge {
+        display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+        text-transform: uppercase; padding: 4px 12px; border-radius: 999px;
+        background: rgba(255,107,129,0.15); color: #ff8fa3; margin-bottom: 14px;
+    }
+    .actions { display: flex; gap: 10px; justify-content: center; margin-top: 22px; }
+    button {
+        font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+        padding: 11px 24px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.06); color: #e8f0fb; transition: all 0.15s;
+    }
+    button:hover { border-color: #ff6b81; background: rgba(255,107,129,0.12); }
+    button.primary { background: linear-gradient(135deg, #ff6b81, #8b5cf6); border: none; color: #0b0f18; }
+    button.primary:hover { filter: brightness(1.12); }
+    .hint { font-size: 11.5px; color: #5f7393; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="icon">⚠️</div>
+    <h1>Dangerous Site Blocked</h1>
+    <span class="badge" id="cat-badge">phishing</span>
+    <div class="sub">Black Site Advisor (like McAfee WebAdvisor) blocked this page because it is listed as a known dangerous site.</div>
+    <div class="url" id="url-label"></div>
+    <div class="actions">
+        <button id="btn-back">← Go back</button>
+        <button id="btn-proceed" class="primary">Proceed anyway</button>
+    </div>
+    <div class="hint">Proceeding may expose your passwords, OTPs and personal data to scammers.</div>
+</div>
+<script>
+    const q = new URLSearchParams(location.search);
+    const target = q.get('url') || '';
+    const cat = q.get('cat') || 'unknown';
+    const rule = q.get('rule') || '';
+    document.getElementById('cat-badge').textContent = cat;
+    document.getElementById('url-label').textContent = target || '(unknown)';
+    document.getElementById('btn-back').addEventListener('click', () => history.back());
+    document.getElementById('btn-proceed').addEventListener('click', async () => {
+        try { await window.api.advisorProceed(target); } catch (e) {}
+        location.href = target;
+    });
+</script>
+</body>
+</html>

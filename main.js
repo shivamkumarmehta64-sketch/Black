@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain, dialog, protocol, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, session, ipcMain, dialog, protocol, Tray, Menu, nativeImage, webContents, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const startTime = Date.now();
 let mainWindow;
 let blockedCount = 0;
+let windowCascadeCount = 0;
 
 // ── WEBVIEW MEMORY: GC on window blur & IPC collector ────────────────────────
 app.on('browser-window-blur', () => {
@@ -22,6 +23,99 @@ ipcMain.handle('gc-collect', () => {
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── SSD HEALTH: RAM-buffered debounced disk writes ──────────────────────────
+// Buffers JSON in memory and flushes to disk only after 2.5s of silence,
+// eliminating hundreds of micro-writes per minute (protects SSD lifespan).
+const _writeBuffers = new Map();
+const WRITE_DEBOUNCE_MS = 2500;
+
+function debouncedWrite(key, file, data) {
+  let json;
+  try { json = JSON.stringify(data); } catch (e) { return; }
+  const existing = _writeBuffers.get(key);
+  if (existing && existing.json === json) return; // skip identical writes
+  if (existing) clearTimeout(existing.timer);
+  _writeBuffers.set(key, {
+    json, file,
+    timer: setTimeout(() => {
+      _writeBuffers.delete(key);
+      try { fs.writeFileSync(file, json, 'utf8'); }
+      catch (e) { console.error(`[Black] Failed to write ${file}:`, e); }
+    }, WRITE_DEBOUNCE_MS)
+  });
+}
+
+function flushDebouncedWrites() {
+  for (const [key, buf] of _writeBuffers) {
+    clearTimeout(buf.timer);
+    _writeBuffers.delete(key);
+    try { fs.writeFileSync(buf.file, buf.json, 'utf8'); }
+    catch (e) { console.error(`[Black] Failed to flush ${buf.file}:`, e); }
+  }
+}
+
+app.on('before-quit', flushDebouncedWrites);
+app.on('will-quit', flushDebouncedWrites);
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── REAL SSD HEALTH (SMART via Windows PowerShell) ──────────────────────────
+// Reads wear %, temperature and error counters with Get-StorageReliabilityCounter.
+// Results are cached for 30 s — SMART reads are slow and should not spam disks.
+let ssdCache = null;
+let ssdCacheAt = 0;
+ipcMain.handle('ssd-health', async (_e, force) => {
+  if (!force && ssdCache && Date.now() - ssdCacheAt < 30000) return ssdCache;
+  const { execFile } = require('child_process');
+  const script = `
+    $ErrorActionPreference = 'SilentlyContinue';
+    Get-PhysicalDisk | ForEach-Object {
+      $p = $_;
+      $r = $null;
+      try { $r = $p | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue } catch {};
+      $vals = @([string]$p.FriendlyName, [string]$p.MediaType, [string]$p.Size, [string]$p.HealthStatus);
+      if ($r) { $vals += @([string]$r.Wear, [string]$r.Temperature, [string]$r.ReadErrorsTotal, [string]$r.WriteErrorsTotal, [string]$r.PowerOnHours) }
+      else { $vals += @('', '', '', '', '') };
+      ($vals -join [char]9) | Write-Output
+    }`;
+  try {
+    const out = await new Promise((resolve, reject) => {
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+        { timeout: 20000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
+        (err, stdout) => err ? reject(err) : resolve(stdout));
+    });
+    const disks = [];
+    let telemetry = false;
+    for (const line of out.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      const f = line.split('\t');
+      if (f.length < 4) continue;
+      const num = (v) => { const n = parseFloat(v); return isNaN(n) || v === '' ? -1 : n; };
+      const disk = {
+        name: f[0] || 'Unknown drive',
+        media: f[1] || '',
+        sizeGB: num(f[2]) > 0 ? Math.round(num(f[2]) / 1073741824) : 0,
+        health: f[3] || 'Unknown',
+        wear: num(f[4]),
+        temp: num(f[5]),
+        readErrors: num(f[6]),
+        writeErrors: num(f[7]),
+        powerOnHours: num(f[8])
+      };
+      if (f[4] !== '') telemetry = true;
+      disks.push(disk);
+    }
+    if (!disks.length) { ssdCache = { ok: false, error: 'no disks reported' }; ssdCacheAt = Date.now(); return ssdCache; }
+    ssdCache = { ok: true, disks, telemetry };
+    ssdCacheAt = Date.now();
+    return ssdCache;
+  } catch (e) {
+    ssdCache = { ok: false, error: String((e && e.message) || e) };
+    ssdCacheAt = Date.now();
+    return ssdCache;
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 ipcMain.handle('toggle-fullscreen', () => {
   const win = BrowserWindow.getFocusedWindow();
   if (win) {
@@ -34,6 +128,26 @@ ipcMain.handle('set-fullscreen', (_e, fs) => {
   if (win) win.setFullScreen(fs);
 });
 
+ipcMain.handle('close-window', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win && !win.isDestroyed()) win.close();
+  return true;
+});
+
+// New browser window (Ctrl+N) / InPrivate window (Ctrl+Shift+N)
+ipcMain.handle('new-window', (_e, incognito) => {
+  const win = createWindow({ incognito: !!incognito });
+  return true;
+});
+
+// Relay "open panel" requests from webviews (new tab page dock, etc.) to their host window
+ipcMain.on('open-panel', (e, panel) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('open-panel', panel);
+  }
+});
+
 // Open external URLs safely in the system default browser
 ipcMain.handle('open-external', (_e, url) => {
   if (typeof url !== 'string') return false;
@@ -42,6 +156,90 @@ ipcMain.handle('open-external', (_e, url) => {
   shell.openExternal(url).catch(() => {});
   return true;
 });
+
+// ── AI ASSISTANT (Great Sage): streaming chat via main-process fetch ────────
+// Routes requests through the main process so any OpenAI-compatible provider
+// works (no CORS issues), including local servers like Ollama.
+const aiControllers = new Map();
+
+ipcMain.handle('ai-chat-start', async (e, payload) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const key = win && !win.isDestroyed() ? win.id : e.sender.id;
+  const controller = new AbortController();
+  aiControllers.set(key, controller);
+
+  const base = String(payload && payload.baseUrl || '').replace(/\/+$/, '');
+  const headers = { 'Content-Type': 'application/json' };
+  if (payload && payload.apiKey) headers.Authorization = 'Bearer ' + payload.apiKey;
+  const body = {
+    model: payload && payload.model || '',
+    messages: payload && payload.messages || [],
+    temperature: payload && payload.temperature !== undefined ? payload.temperature : 0.7,
+    max_tokens: payload && payload.maxTokens || 1024
+  };
+  const stream = !!(payload && payload.stream);
+  if (stream) body.stream = true;
+
+  try {
+    const res = await fetch(base + '/chat/completions', {
+      method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.text()).slice(0, 500); } catch (_) {}
+      return { ok: false, status: res.status, detail };
+    }
+    if (!stream) {
+      const j = await res.json();
+      const content = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      return { ok: true, full: typeof content === 'string' ? content : JSON.stringify(content || '') };
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    let full = '';
+    let done = false;
+    while (true) {
+      let chunk;
+      try { chunk = await reader.read(); } catch (_) { break; }
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const data = t.slice(5).trim();
+        if (data === '[DONE]') { done = true; break; }
+        try {
+          const j = JSON.parse(data);
+          const d = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+          if (d) {
+            full += d;
+            if (!controller.signal.aborted && win && !win.isDestroyed()) win.webContents.send('ai-chunk', { text: d });
+          }
+        } catch (_) {}
+      }
+      if (done) break;
+    }
+    return { ok: true, full, stopped: controller.signal.aborted };
+  } catch (err) {
+    return {
+      ok: false, status: 0, stopped: controller.signal.aborted,
+      detail: controller.signal.aborted ? 'stopped' : String((err && err.message) || err)
+    };
+  } finally {
+    aiControllers.delete(key);
+  }
+});
+
+ipcMain.on('ai-chat-stop', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const key = win && !win.isDestroyed() ? win.id : e.sender.id;
+  const c = aiControllers.get(key);
+  if (c) c.abort();
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 function setupContextMenu() {
   app.whenReady().then(async () => {
@@ -63,6 +261,9 @@ function setupContextMenu() {
 
 setupContextMenu();
 
+// Windows-style toast notifications from Great Sage (must be set before whenReady)
+app.setAppUserModelId('com.black.browser');
+
 // Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
 protocol.registerSchemesAsPrivileged([
   { scheme: 'black-ui', privileges: { standard: true, secure: true, allowServiceWorkers: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
@@ -72,13 +273,7 @@ protocol.registerSchemesAsPrivileged([
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'disable_non_proxied_udp');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('disable-frame-rate-limit');         // uncap compositor FPS
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('num-raster-threads', '4');           // parallel tile rasterisation
-app.commandLine.appendSwitch('enable-accelerated-video-decode');   // GPU video decode
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -97,49 +292,312 @@ if (!gotLock) {
   });
 }
 
-function createWindow() {
-  // Use .ico on Windows (multi-resolution), .png elsewhere
+function createWindow(opts = {}) {
+  const incognito = !!opts.incognito;
   const iconFile = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
-  mainWindow = new BrowserWindow({
+  const cascade = (++windowCascadeCount - 1) * 28;
+  const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    x: 120 + cascade,
+    y: 60 + cascade,
     icon: path.join(__dirname, iconFile),
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#1a1c1e',
-      symbolColor: '#e8eaed',
-      height: 30
-    },
+    title: incognito ? 'InPrivate — Black Browser' : 'Black Browser',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
-      webviewTag: true
+      webviewTag: true,
+      additionalArguments: [incognito ? '--black-incognito' : '--black-normal']
     },
-    backgroundColor: '#202124',
+    backgroundColor: '#05080f',
     show: false
   });
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    console.log('[Black] Window ready in', Date.now() - startTime, 'ms');
-  });
+  const showWindow = () => {
+    if (win && !win.isVisible()) {
+      if (windowCascadeCount === 1) win.center();
+      win.show();
+      win.focus();
+      if (!incognito) console.log('[Black] Window ready and shown in', Date.now() - startTime, 'ms');
+    }
+  };
 
-  mainWindow.loadFile('index.html');
+  win.once('ready-to-show', showWindow);
+
+  // Safety fallback: Ensure window shows even if ready-to-show is delayed
+  setTimeout(showWindow, 1200);
+
+  win.loadFile('index.html');
+  if (incognito && process.env.NODE_ENV === 'development') console.log('[Black] InPrivate window created');
+  return win;
 }
 
 app.whenReady().then(() => {
-  // Custom protocol for internal browser pages (black-ui://newtab)
+  // Custom protocol for internal browser pages (black-ui://newtab, warning)
   protocol.registerFileProtocol('black-ui', (request, callback) => {
     let urlPath = request.url.replace(/^black-ui:\/\//, '');
     urlPath = urlPath.split('?')[0].split('#')[0];
     if (!urlPath || urlPath === 'newtab' || urlPath === 'newtab/' || urlPath === 'newtab.html') {
       callback({ path: path.join(__dirname, 'newtab.html') });
+    } else if (urlPath === 'warning' || urlPath === 'warning.html') {
+      callback({ path: path.join(__dirname, 'warning.html') });
     } else {
       callback({ path: path.join(__dirname, urlPath) });
     }
   });
+
+  // ── SITE ADVISOR (McAfee WebAdvisor-style safe browsing) ─────────────────
+  let advisorRules = [];
+  let advisorChecks = 0;
+  let advisorBlocks = 0;
+  const advisorBypassed = new Set();
+  const advisorFile = path.join(app.getPath('userData'), 'site_advisor.json');
+  try {
+    const src = fs.existsSync(advisorFile) ? advisorFile : path.join(__dirname, 'rules', 'site_advisor.json');
+    advisorRules = JSON.parse(fs.readFileSync(src, 'utf8')).rules || [];
+    if (!Array.isArray(advisorRules)) advisorRules = [];
+  } catch (e) {
+    advisorRules = [];
+    console.error('[Black] Site Advisor rules failed to load:', e.message);
+  }
+  const advisorMatch = (hostname) => {
+    const h = hostname.toLowerCase().replace(/^www\./, '');
+    for (const r of advisorRules) {
+      if (r.rule === h || h.endsWith('.' + r.rule)) return r;
+    }
+    return null;
+  };
+  const advisorBlockUrl = (url) => {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      return advisorMatch(u.hostname);
+    } catch (_) { return null; }
+  };
+  // Persist a user-blocked host into the local rules file
+  ipcMain.handle('advisor-block', (_e, url) => {
+    try {
+      const h = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+      if (!h || h.includes('localhost') || h.includes('127.0.0.1')) return false;
+      if (!advisorRules.some(r => r.rule === h)) {
+        advisorRules.push({ category: 'user-block', rule: h });
+        try { fs.writeFileSync(advisorFile, JSON.stringify({ version: 1, rules: advisorRules }, null, 2)); } catch (e) {}
+        return true;
+      }
+      return false;
+    } catch (_) { return false; }
+  });
+  ipcMain.handle('advisor-proceed', (_e, url) => {
+    if (typeof url === 'string' && /^https?:\/\//.test(url)) advisorBypassed.add(url);
+    return true;
+  });
+  ipcMain.handle('advisor-status', () => ({
+    rules: advisorRules.length,
+    checks: advisorChecks,
+    blocks: advisorBlocks
+  }));
+  // Check every main-frame navigation; dangerous pages go to the warning page
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: ['http://*/*', 'https://*/*'] },
+    (details, callback) => {
+      if (details.resourceType !== 'mainFrame') { callback({}); return; }
+      advisorChecks++;
+      if (advisorBypassed.has(details.url)) { callback({}); return; }
+      const hit = advisorBlockUrl(details.url);
+      if (hit) {
+        advisorBlocks++;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('advisor-blocked', { url: details.url, category: hit.category, rule: hit.rule });
+        }
+        callback({
+          redirectURL: 'black-ui://warning?url=' + encodeURIComponent(details.url) +
+                       '&cat=' + encodeURIComponent(hit.category) +
+                       '&rule=' + encodeURIComponent(hit.rule)
+        });
+        return;
+      }
+      callback({});
+    }
+  );
+
+  // ── OSINT SELF-CHECK TOOLS (free, no API keys, privacy-first) ────────────
+  // pwned-range: k-anonymity check against the Pwned Passwords API — only the
+  // first 5 chars of the SHA-1 hash ever leave this device.
+  ipcMain.handle('osint-check', async (_e, type, param) => {
+    const crypto = require('crypto');
+    const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    try {
+      if (type === 'pwned') {
+        const pw = String(param || '');
+        if (!pw) return { ok: false, error: 'empty' };
+        const sha = crypto.createHash('sha1').update(pw).digest('hex').toUpperCase();
+        const prefix = sha.slice(0, 5);
+        const res = await withTimeout(fetch('https://api.pwnedpasswords.com/range/' + prefix), 20000);
+        if (!res.ok) return { ok: false, error: 'http ' + res.status };
+        const body = await res.text();
+        let count = 0;
+        for (const line of body.split('\n')) {
+          const i = line.indexOf(':');
+          if (i > 0 && (prefix + line.slice(0, i)) === sha) { count = parseInt(line.slice(i + 1), 10) || 0; break; }
+        }
+        return { ok: true, pwned: count > 0, count };
+      }
+      if (type === 'ip') {
+        const ipRes = await withTimeout(fetch('https://api.ipify.org?format=json'), 20000);
+        const ipJson = await ipRes.json();
+        const infoRes = await withTimeout(fetch('https://ipinfo.io/json'), 20000);
+        const info = await infoRes.json();
+        return { ok: true, ip: ipJson.ip, city: info.city || '?', region: info.region || '?', country: info.country || '?', org: info.org || '?', hostname: info.hostname || '' };
+      }
+      if (type === 'dns') {
+        const host = String(param || '').trim();
+        if (!host) return { ok: false, error: 'empty' };
+        const res = await withTimeout(fetch('https://dns.google/resolve?name=' + encodeURIComponent(host) + '&type=A'), 20000);
+        const j = await res.json();
+        const answers = (j.Answer || []).map(a => ({ type: a.type, data: a.data }));
+        return { ok: true, host, status: j.Status, nxdomain: j.Status === 3, answers };
+      }
+      return { ok: false, error: 'unknown-type' };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // Windows-style notification from the renderer (Great Sage alerts)
+  ipcMain.handle('security-notify', (_e, title, body) => {
+    try {
+      if (Notification.isSupported()) {
+        const n = new Notification({ title: String(title || 'Great Sage'), body: String(body || ''), silent: false });
+        n.show();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  });
+
+  // ── NATIVE SHIELDS ENGINE (Brave-style ad/tracker blocking, C++) ─────────
+  const { spawn } = require('child_process');
+  const readline = require('readline');
+
+  let shieldsProc = null;
+  let shieldsReady = false;
+  let shieldsEnabled = true;
+  let shieldsRulesCount = 0;
+  let shieldsChecks = 0;
+  let shieldsBlocks = 0;
+  const shieldsPending = [];
+
+  function shieldsExePath() {
+    const prod = path.join(process.resourcesPath, 'native_engine', 'black_shields.exe');
+    const dev = path.join(__dirname, 'native_engine', 'black_shields.exe');
+    if (fs.existsSync(prod)) return prod;
+    return dev;
+  }
+
+  function startShieldsEngine() {
+    const exe = shieldsExePath();
+    if (!fs.existsSync(exe)) {
+      console.error('[Black] Native shields engine not found:', exe);
+      return;
+    }
+    try {
+      shieldsProc = spawn(exe, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch (e) {
+      console.error('[Black] Failed to spawn shields engine:', e.message);
+      return;
+    }
+    readline.createInterface({ input: shieldsProc.stdout }).on('line', (line) => {
+      if (line.startsWith('STATS\t')) {
+        const parts = line.split('\t');
+        shieldsRulesCount = parseInt(parts[1], 10) || 0;
+        return;
+      }
+      if (line === 'PONG') { shieldsReady = true; return; }
+      const resolver = shieldsPending.shift();
+      if (!resolver) return;
+      if (line.startsWith('BLOCK\t')) {
+        shieldsBlocks++;
+        const parts = line.split('\t');
+        resolver({ blocked: true, category: parts[1] || 'advertising', rule: parts[2] || '' });
+      } else {
+        resolver({ blocked: false });
+      }
+    });
+    shieldsProc.stderr.on('data', (d) => {
+      if (process.env.NODE_ENV === 'development') console.error('[Shields]', String(d).trim());
+    });
+    shieldsProc.on('error', () => { shieldsReady = false; });
+    shieldsProc.on('exit', () => { shieldsReady = false; });
+    shieldsProc.stdin.write('PING\n');
+    shieldsProc.stdin.write('STATS\n');
+    if (process.env.NODE_ENV === 'development') console.log('[Black] Native shields engine started (C++)');
+  }
+
+  function shieldsCheck(url, type) {
+    return new Promise((resolve) => {
+      if (!shieldsReady || !shieldsEnabled || !shieldsProc) return resolve({ blocked: false });
+      shieldsChecks++;
+      shieldsPending.push(resolve);
+      shieldsProc.stdin.write(`CHECK\t${type}\t${url}\n`);
+      setTimeout(() => {
+        const idx = shieldsPending.indexOf(resolve);
+        if (idx > -1) { shieldsPending.splice(idx, 1); resolve({ blocked: false }); }
+      }, 200);
+    });
+  }
+
+  function shieldsResourceType(t) {
+    if (t === 'script') return 'script';
+    if (t === 'stylesheet') return 'stylesheet';
+    if (t === 'image') return 'image';
+    if (t === 'font') return 'font';
+    if (t === 'media') return 'media';
+    if (t === 'xhr') return 'xmlhttprequest';
+    return 'other';
+  }
+
+  startShieldsEngine();
+
+  // Honor persisted shields preference (settings.json → shields: false)
+  try {
+    const sf = path.join(app.getPath('userData'), 'settings.json');
+    if (fs.existsSync(sf)) {
+      const s = JSON.parse(fs.readFileSync(sf, 'utf8'));
+      if (s.shields === false) shieldsEnabled = false;
+    }
+  } catch (e) {}
+
+  app.on('will-quit', () => {
+    if (shieldsProc) {
+      try { shieldsProc.stdin.write('EXIT\n'); } catch (e) {}
+      setTimeout(() => { try { shieldsProc.kill(); } catch (e) {} }, 50);
+      shieldsReady = false;
+    }
+  });
+
+  ipcMain.handle('shields-status', () => ({
+    engine: shieldsReady ? 'native' : 'fallback',
+    rules: shieldsRulesCount,
+    checks: shieldsChecks,
+    blocks: shieldsBlocks,
+    enabled: shieldsEnabled
+  }));
+
+  ipcMain.handle('shields-set', (_e, enabled) => {
+    shieldsEnabled = !!enabled;
+    const sf = path.join(app.getPath('userData'), 'settings.json');
+    try {
+      const existing = fs.existsSync(sf) ? JSON.parse(fs.readFileSync(sf, 'utf8')) : {};
+      existing.shields = shieldsEnabled;
+      debouncedWrite('settings', sf, existing);
+    } catch (e) {}
+    return shieldsEnabled;
+  });
+  // ─────────────────────────────────────────────────────────────────────────
 
   // YouTube ad URL blocking
   session.defaultSession.webRequest.onBeforeRequest(
@@ -198,6 +656,8 @@ app.whenReady().then(() => {
       '*://*.adclick.g.doubleclick.net/*'
     ] },
     (details, callback) => {
+      // Government domains are exempt — portals must never be broken by ad filtering
+      if (isGovUrl(details)) { callback({ cancel: false }); return; }
       blockedCount++;
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('blocked-count', blockedCount);
@@ -207,7 +667,7 @@ app.whenReady().then(() => {
   );
 
   // User-Agent override for YouTube Playables & Google Services compatibility
-  const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
   session.defaultSession.setUserAgent(chromeUA);
 
   const userDataPath = app.getPath('userData');
@@ -285,6 +745,134 @@ app.whenReady().then(() => {
 
   const settingsFile = path.join(userDataPath, 'settings.json');
 
+  // ── EXTENSIONS (Chrome Web Store / MV3, loaded via Chromium engine) ───────
+  const loadedExtensions = [];
+
+  function extensionLoad(p) {
+    // Prefer the modern sessions API, fall back to session.loadExtension
+    const { sessions } = require('electron');
+    if (sessions && typeof sessions.loadExtension === 'function') {
+      return sessions.loadExtension({ path: p, options: { allowFileAccess: true } });
+    }
+    return session.defaultSession.loadExtension(p);
+  }
+
+  function extensionRemove(id) {
+    const { sessions } = require('electron');
+    if (sessions && typeof sessions.removeExtension === 'function') {
+      return sessions.removeExtension(id);
+    }
+    return session.defaultSession.removeExtension(id);
+  }
+
+  function persistExtensions() {
+    try {
+      const existing = fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
+      existing.extensionPaths = loadedExtensions.map(x => x.path);
+      debouncedWrite('settings-ext', settingsFile, existing);
+    } catch (e) {}
+  }
+
+  // Restore extensions on startup
+  try {
+    const cfg = fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
+    (cfg.extensionPaths || []).forEach(async (p) => {
+      try {
+        const ext = await extensionLoad(p);
+        loadedExtensions.push({ id: ext.id, name: ext.name, path: p, version: ext.version || '' });
+        if (process.env.NODE_ENV === 'development') console.log('[Black] Extension loaded:', ext.name);
+      } catch (e) {
+        console.error('[Black] Failed to load extension:', p, e.message);
+      }
+    });
+  } catch (e) {}
+
+  ipcMain.handle('ext-list', () => loadedExtensions.map(x => ({ id: x.id, name: x.name, path: x.path, version: x.version })));
+
+  ipcMain.handle('ext-load-dialog', async () => {
+    const result = await dialog.showOpenDialog(mainWindow || BrowserWindow.getAllWindows()[0], {
+      title: 'Load Unpacked Extension',
+      properties: ['openDirectory']
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle('ext-load', async (_e, dir) => {
+    if (typeof dir !== 'string') return { ok: false, error: 'Invalid path' };
+    try {
+      const ext = await extensionLoad(dir);
+      if (!loadedExtensions.some(x => x.id === ext.id)) {
+        loadedExtensions.push({ id: ext.id, name: ext.name, path: dir, version: ext.version || '' });
+        persistExtensions();
+      }
+      return { ok: true, id: ext.id, name: ext.name, version: ext.version || '' };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('ext-remove', async (_e, id) => {
+    try { await extensionRemove(id); } catch (e) {}
+    const i = loadedExtensions.findIndex(x => x.id === id);
+    if (i > -1) loadedExtensions.splice(i, 1);
+    persistExtensions();
+    return true;
+  });
+
+  // ── WEB CAPTURE & PRINT TO PDF (active webview by webContents id) ─────────
+  ipcMain.handle('web-screenshot', async (_e, wcId) => {
+    const wc = webContents.fromId(wcId);
+    if (!wc) return { ok: false, error: 'No active page' };
+    try {
+      const img = await wc.capturePage();
+      const png = img.toPNG();
+      const result = await dialog.showSaveDialog(mainWindow || BrowserWindow.getAllWindows()[0], {
+        title: 'Save Web Capture',
+        defaultPath: `web-capture-${Date.now()}.png`,
+        filters: [{ name: 'PNG Image', extensions: ['png'] }]
+      });
+      if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(result.filePath, png);
+      return { ok: true, filePath: result.filePath };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('print-pdf', async (_e, wcId) => {
+    const wc = webContents.fromId(wcId);
+    if (!wc) return { ok: false, error: 'No active page' };
+    try {
+      const data = await wc.printToPDF({});
+      const result = await dialog.showSaveDialog(mainWindow || BrowserWindow.getAllWindows()[0], {
+        title: 'Save as PDF',
+        defaultPath: `page-${Date.now()}.pdf`,
+        filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+      });
+      if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(result.filePath, data);
+      return { ok: true, filePath: result.filePath };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err) };
+    }
+  });
+
+  // ── READING LIST (Edge-style "read later") ───────────────────────────────
+  const readingFile = path.join(userDataPath, 'reading.json');
+
+  ipcMain.handle('load-reading', () => {
+    try {
+      if (fs.existsSync(readingFile)) return JSON.parse(fs.readFileSync(readingFile, 'utf8'));
+    } catch (e) {}
+    return [];
+  });
+
+  ipcMain.handle('save-reading', (_e, data) => {
+    try { debouncedWrite('reading', readingFile, data); } catch (e) {}
+    return true;
+  });
+
   ipcMain.handle('load-settings', () => {
     try {
       if (fs.existsSync(settingsFile)) {
@@ -307,7 +895,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('save-usage', (_e, data) => {
     try {
-      fs.writeFileSync(usageFile, JSON.stringify(data));
+      debouncedWrite('usage', usageFile, data);
       return true;
     } catch (e) { return false; }
   });
@@ -325,7 +913,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('save-bookmarks', (_e, data) => {
     try {
-      fs.writeFileSync(bookmarksFile, JSON.stringify(data, null, 2));
+      debouncedWrite('bookmarks', bookmarksFile, data);
     } catch (e) {
       console.error('Failed to save bookmarks:', e);
     }
@@ -344,7 +932,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('save-history', (_e, data) => {
     try {
-      fs.writeFileSync(historyFile, JSON.stringify(data, null, 2));
+      debouncedWrite('history', historyFile, data);
     } catch (e) {
       console.error('Failed to save history:', e);
     }
@@ -354,7 +942,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('save-session', (_e, data) => {
     try {
-      fs.writeFileSync(sessionFile, JSON.stringify(data));
+      debouncedWrite('session', sessionFile, data);
     } catch (e) {
       console.error('Failed to save session:', e);
     }
@@ -436,7 +1024,7 @@ app.whenReady().then(() => {
   });
   // ─────────────────────────────────────────────────────────────────────────
 
-  createWindow();
+  mainWindow = createWindow();
 
   // System tray — prefer .ico for multi-res Windows taskbar
   try {
@@ -493,10 +1081,34 @@ app.whenReady().then(() => {
   });
 
   // Anti-fingerprinting + selective permission handler
+  // Government portals (GST, e-filing, DigiLocker, EPFO...) need geolocation,
+  // notifications & media to work — those are allowed on official gov domains.
+  const isGovDomain = (u) => {
+    try {
+      const h = new URL(u).hostname.toLowerCase();
+      return /\.gov\.in$|\.gov$|\.nic\.in$|\.ac\.in$|\.gov\.(uk|au|nz|sg|ca|za|my|hk|bd|lk|np|id|th|ph)$/.test(h);
+    } catch (_) { return false; }
+  };
+  // Ad-filter exemption for gov portals: exempt when the request URL or the
+  // tab's top-level page belongs to an official government domain.
+  const isGovUrl = (details) => {
+    try {
+      if (isGovDomain(details.url || '')) return true;
+      if (details.webContentsId) {
+        const wc = webContents.fromId(details.webContentsId);
+        if (wc && !wc.isDestroyed() && isGovDomain(wc.getURL() || '')) return true;
+      }
+    } catch (_) {}
+    return false;
+  };
   session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
     const url = wc.getURL();
     // Allow geolocation for black-ui newtab weather widget
     if (permission === 'geolocation' && url.startsWith('black-ui://')) {
+      callback(true);
+      return;
+    }
+    if (isGovDomain(url) && ['geolocation', 'notifications', 'media', 'clipboard-read'].includes(permission)) {
       callback(true);
       return;
     }
@@ -516,7 +1128,15 @@ app.whenReady().then(() => {
   // Re-check on settings save
   ipcMain.handle('save-settings', (_e, data) => {
     try {
-      fs.writeFileSync(path.join(app.getPath('userData'), 'settings.json'), JSON.stringify(data, null, 2));
+      // Preserve extension registry — the renderer settings payload doesn't own it
+      try {
+        const sf = path.join(app.getPath('userData'), 'settings.json');
+        if (fs.existsSync(sf)) {
+          const existing = JSON.parse(fs.readFileSync(sf, 'utf8'));
+          if (existing.extensionPaths && !data.extensionPaths) data.extensionPaths = existing.extensionPaths;
+        }
+      } catch (e) {}
+      debouncedWrite('settings', path.join(app.getPath('userData'), 'settings.json'), data);
       darkModeEnabled = data.forceDarkMode !== false;
       return true;
     } catch (e) { return false; }
@@ -525,6 +1145,7 @@ app.whenReady().then(() => {
   // Inject fingerprint + YT adblock + dark mode into all webviews
   app.on('web-contents-created', (event, wc) => {
     wc.on('did-finish-load', () => {
+      try {
       const url = wc.getURL();
 
       // Anti-fingerprinting (every page)
@@ -532,11 +1153,12 @@ app.whenReady().then(() => {
 
       // Force dark mode using Chrome's built-in engine (preserves images, videos, layouts)
       if (url.startsWith('http') && darkModeEnabled) {
-        wc.debugger.attach().then(() => {
-          wc.debugger.sendCommand('Emulation.setAutoDarkModeOverride', { enabled: true });
-        }).catch(() => {
-          // Fallback for debugger failure
-        });
+        try {
+          if (!wc.debugger.isAttached()) wc.debugger.attach();
+          wc.debugger.sendCommand('Emulation.setAutoDarkModeOverride', { enabled: true }).catch(() => {});
+        } catch (e) {
+          // Debugger already attached or unavailable — dark mode skipped
+        }
       }
 
       // YouTube ad stripping
@@ -602,11 +1224,44 @@ app.whenReady().then(() => {
           })();
         `, true).catch(() => {});
       }
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') console.error('[Black] did-finish-load:', e.message);
+      }
     });
   });
 
+  // ── Crash recovery & memory guard (multi-tab stability) ─────────────────
+  // If the browser UI itself crashes, bring it back with a reload (session is
+  // persisted, tabs are restored from session.json).
+  app.on('web-contents-created', (_ev, wc) => {
+    if (wc.getType() !== 'window') return;
+    wc.on('render-process-gone', (_e, details) => {
+      if (details.reason === 'clean-exit' || details.reason === 'launch-failed') return;
+      setTimeout(() => {
+        try {
+          if (!wc.isDestroyed() && !wc.isLoading()) wc.reload();
+        } catch (_) {}
+      }, 1500);
+    });
+  });
+
+  // Memory pressure watch: when the app crosses a high-water mark, ask every
+  // window to sleep its least-recently-used background tab.
+  let memoryGuardLast = 0;
+  setInterval(() => {
+    try {
+      const mb = Math.round(process.memoryInfo().total / 1048576);
+      if (mb > 3500 && Date.now() - memoryGuardLast > 20000) {
+        memoryGuardLast = Date.now();
+        for (const w of BrowserWindow.getAllWindows()) {
+          if (!w.isDestroyed()) w.webContents.send('memory-pressure', mb);
+        }
+      }
+    } catch (_) {}
+  }, 15000);
+
   session.defaultSession.on('will-download', (event, item, webContents) => {
-    const filePath = dialog.showSaveDialogSync(mainWindow, {
+    const filePath = dialog.showSaveDialogSync(mainWindow || BrowserWindow.getAllWindows()[0], {
       defaultPath: item.getFilename(),
       filters: [{ name: 'All Files', extensions: ['*'] }]
     });
@@ -648,7 +1303,9 @@ app.whenReady().then(() => {
   });
 
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      mainWindow = createWindow();
+    }
   });
 });
 
