@@ -103,7 +103,7 @@ function createTab(url = NEW_TAB_URL) {
   tabs.push(tabObj);
 
   webviewEl.addEventListener('did-start-loading', () => {
-    showLoading();
+    showLoading(webviewEl.getURL());
     if (activeTabId === tabId) reloadBtn.innerHTML = '<span class="material-icons-round">close</span>';
     titleEl.innerText = 'Loading...';
     if (activeTabId === tabId) updateNavButtons(webviewEl);
@@ -242,25 +242,57 @@ function getActiveWebview() { const t = tabs.find(t => t.id === activeTabId); re
 function getActiveTab() { return tabs.find(t => t.id === activeTabId) || null; }
 
 function updateLockIcon(url) {
-  if (!url || url === 'about:blank') {
-    lockIcon.textContent = 'shield';
-    lockIcon.className = 'material-icons-round lock-icon';
+  const secDot = document.getElementById('sec-dot');
+  const urlFavicon = document.getElementById('url-favicon');
+
+  if (!url || url === 'about:blank' || url.startsWith('black-ui:')) {
+    if (secDot) { secDot.className = 'sec-dot secure'; secDot.title = 'Black Engine Interface'; }
+    if (urlFavicon) urlFavicon.style.display = 'none';
     return;
   }
-  if (url.startsWith('https://')) {
-    lockIcon.textContent = 'lock';
-    lockIcon.className = 'material-icons-round lock-icon secure';
-  } else if (url.startsWith('http://')) {
-    lockIcon.textContent = 'lock_open';
-    lockIcon.className = 'material-icons-round lock-icon insecure';
-  } else {
-    lockIcon.textContent = 'info';
-    lockIcon.className = 'material-icons-round lock-icon';
+
+  if (secDot) {
+    if (url.startsWith('https://')) {
+      secDot.className = 'sec-dot secure';
+      secDot.title = 'Connection is secure (HTTPS)';
+    } else if (url.startsWith('http://')) {
+      secDot.className = 'sec-dot insecure';
+      secDot.title = 'Connection is not secure (HTTP)';
+    } else {
+      secDot.className = 'sec-dot';
+      secDot.title = 'Internal Page';
+    }
+  }
+
+  if (urlFavicon) {
+    if (url.startsWith('http')) {
+      try {
+        urlFavicon.src = new URL(url).origin + '/favicon.ico';
+        urlFavicon.style.display = 'block';
+      } catch (_) { urlFavicon.style.display = 'none'; }
+    } else {
+      urlFavicon.style.display = 'none';
+    }
   }
 }
 
-function showLoading() { loadingBar.classList.remove('hidden'); loadingBar.classList.add('active'); loadingBar.style.width = '30%'; }
-function hideLoading() { loadingBar.classList.remove('active'); loadingBar.style.width = '100%'; setTimeout(() => { loadingBar.classList.add('hidden'); loadingBar.style.width = '0%'; }, 200); }
+function showLoading(url) {
+  loadingBar.classList.remove('hidden');
+  loadingBar.classList.add('active');
+  loadingBar.style.width = '30%';
+  const statusLoadingUrl = document.getElementById('status-loading-url');
+  if (statusLoadingUrl && url) {
+    statusLoadingUrl.textContent = 'Loading: ' + url;
+    statusLoadingUrl.classList.remove('hidden');
+  }
+}
+function hideLoading() {
+  loadingBar.classList.remove('active');
+  loadingBar.style.width = '100%';
+  setTimeout(() => { loadingBar.classList.add('hidden'); loadingBar.style.width = '0%'; }, 200);
+  const statusLoadingUrl = document.getElementById('status-loading-url');
+  if (statusLoadingUrl) statusLoadingUrl.classList.add('hidden');
+}
 
 // --- PRIVACY SCORE ---
 function updatePrivacyScore(tab) {

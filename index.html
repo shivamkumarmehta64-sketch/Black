@@ -21,26 +21,24 @@
   <!-- Toolbar -->
   <div id="toolbar">
     <div class="nav-buttons">
-      <button id="back-btn" class="tb-btn" title="Back (Alt+←)"><span class="material-icons-round">arrow_back</span></button>
-      <button id="forward-btn" class="tb-btn" title="Forward (Alt+→)"><span class="material-icons-round">arrow_forward</span></button>
-      <button id="reload-btn" class="tb-btn" title="Reload (Ctrl+R)"><span class="material-icons-round">refresh</span></button>
+      <button id="back-btn" class="tb-btn nav-circle-btn" title="Back (Alt+←)"><span class="material-icons-round">arrow_back</span></button>
+      <button id="forward-btn" class="tb-btn nav-circle-btn" title="Forward (Alt+→)"><span class="material-icons-round">arrow_forward</span></button>
+      <button id="reload-btn" class="tb-btn nav-circle-btn" title="Reload (Ctrl+R)"><span class="material-icons-round">refresh</span></button>
     </div>
 
     <div id="url-bar">
-      <span id="lock-icon" class="material-icons-round lock-icon">shield</span>
+      <span id="sec-dot" class="sec-dot secure" title="Connection security"></span>
+      <img id="url-favicon" class="url-favicon" src="" alt="" onerror="this.style.display='none'">
+      <input type="text" id="url-input" class="address-bar" placeholder="Enter URL or search the Abyss..." autocomplete="off" spellcheck="false">
       <span id="privacy-score" class="privacy-score hidden" title="Privacy score">A</span>
       <span id="omnibox-rune" class="omnibox-rune" title="Black Engine">ᚠ</span>
-      <input type="text" id="url-input" class="address-bar" placeholder="Enter URL or search the Abyss..." autocomplete="off" spellcheck="false">
-      <button id="star-btn" class="tb-btn star-btn" title="Bind Bookmark (Ctrl+D)"><span class="material-icons-round">star_border</span></button>
     </div>
 
     <div class="right-buttons">
-      <span id="ipc-status-badge" class="ipc-status-badge" title="IPC Message Bus & C++ Engine Connected">ᚲ IPC ACTIVE</span>
-      <button id="free-btn" class="tb-btn" title="Free Resources Hub (Ctrl+Shift+F)"><span class="material-icons-round">redeem</span></button>
-      <button id="reader-btn" class="tb-btn" title="Reader mode"><span class="material-icons-round">article</span></button>
-      <button id="shield-btn" class="tb-btn shield-btn" title="Privacy & security"><span class="material-icons-round">shield</span><span id="shield-badge" class="shield-badge hidden">0</span></button>
-      <button id="profile-btn" class="tb-btn profile-btn" title="Profile">B</button>
-      <button id="menu-btn" class="tb-btn menu-trigger" title="Customize and control Black"><span class="material-icons-round">more_vert</span></button>
+      <button id="shield-btn" class="tb-btn shield-btn right-circle-btn" title="Privacy & security"><span class="material-icons-round">shield</span><span id="shield-badge" class="shield-badge hidden">0</span></button>
+      <button id="star-btn" class="tb-btn star-btn right-circle-btn" title="Bind Bookmark (Ctrl+D)"><span class="material-icons-round">star_border</span></button>
+      <button id="profile-btn" class="tb-btn profile-btn right-circle-btn" title="Profile"><span class="material-icons-round">account_circle</span></button>
+      <button id="menu-btn" class="tb-btn menu-trigger right-circle-btn" title="Customize and control Black"><span class="material-icons-round">more_vert</span></button>
     </div>
   </div>
 
@@ -232,6 +230,19 @@
         <input type="text" id="usage-search" class="pm-input" placeholder="Search sites..." style="margin-bottom:8px">
         <div id="usage-list" class="pm-list"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <div id="status-bar">
+    <div id="status-left">
+      <span id="ipc-status-badge" class="ipc-status-badge" title="IPC Message Bus & C++ Engine Connected">ᚲ IPC ACTIVE</span>
+    </div>
+    <div id="status-center">
+      <span id="status-zoom">Zoom: 100%</span>
+    </div>
+    <div id="status-right">
+      <span id="status-loading-url" class="status-url-text hidden"></span>
     </div>
   </div>
 
