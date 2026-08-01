@@ -77,6 +77,7 @@ function createTab(url = 'black-ui://newtab', isPinned = false) {
     wv.id = 'wv-' + tabId;
     wv.className = 'webview-hidden';
     wv.setAttribute('src', url);
+    wv.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
     wv.setAttribute('preload', 'preload.js');
     wv.setAttribute('allowpopups', '');
     

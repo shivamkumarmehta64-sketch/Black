@@ -189,7 +189,6 @@ app.whenReady().then(() => {
       '*://*.ads.yahoo.com/*',
       '*://*.analytics.yahoo.com/*',
       '*://*.ads.youtube.com/*',
-      '*://*.youtube-nocookie.com/*',
       '*://*.googlesyndication.com/*',
       '*://*.xiti.com/*',
       '*://*.at.atwola.com/*',
@@ -206,6 +205,10 @@ app.whenReady().then(() => {
       callback({ cancel: true });
     }
   );
+
+  // User-Agent override for YouTube Playables & Google Services compatibility
+  const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  session.defaultSession.setUserAgent(chromeUA);
 
   const userDataPath = app.getPath('userData');
   const historyFile = path.join(userDataPath, 'history.json');
