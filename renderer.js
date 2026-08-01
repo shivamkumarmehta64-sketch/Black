@@ -278,7 +278,18 @@ function createTab(url = NEW_TAB_HTML) {
   webviewEl.className = 'webview-hidden';
   browserContainer.appendChild(webviewEl);
 
-  const tabObj = { id: tabId, el: tabEl, webview: webviewEl, titleEl, zoomLevel: 0, lastActive: Date.now(), pageTitle: '' };
+  const tabObj = {
+    id: tabId,
+    el: tabEl,
+    webview: webviewEl,
+    titleEl,
+    zoomLevel: 0,
+    lastActive: Date.now(),
+    pageTitle: '',
+    _sleeping: false,
+    _savedURL: null,
+    _placeholder: null
+  };
   tabs.push(tabObj);
 
   webviewEl.addEventListener('did-start-loading', () => {
@@ -339,7 +350,11 @@ function createTab(url = NEW_TAB_HTML) {
     createTab(e.url);
   });
 
-  tabEl.addEventListener('click', () => switchTab(tabId));
+  tabEl.addEventListener('click', () => {
+    const t = tabs.find(t => t.id === tabId);
+    if (t && t._sleeping) { wakeTab(t); return; }
+    switchTab(tabId);
+  });
   tabEl.addEventListener('mousedown', (e) => { if (e.button === 1) { e.preventDefault(); closeTab(tabId); } });
 
   closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeTab(tabId); });
@@ -351,25 +366,40 @@ function createTab(url = NEW_TAB_HTML) {
 function switchTab(tabId) {
   const prevTab = tabs.find(t => t.id === activeTabId);
   if (prevTab && prevTab.id !== tabId) {
+    // Save URL before blanking
     if (!prevTab._savedURL || prevTab._savedURL === 'about:blank') {
-      var u = prevTab.webview.getURL();
-      if (u && u !== 'about:blank' && !u.startsWith('data:')) prevTab._savedURL = u;
+      try {
+        const u = prevTab.webview.getURL();
+        if (u && u !== 'about:blank' && !u.startsWith('data:')) prevTab._savedURL = u;
+      } catch (e) {}
     }
-    prevTab.webview.loadURL('about:blank');
+    if (!prevTab._sleeping) {
+      try { prevTab.webview.loadURL('about:blank'); } catch (e) {}
+    }
   }
   activeTabId = tabId;
   tabs.forEach(tab => {
     if (tab.id === tabId) {
       tab.el.classList.add('active');
-      tab.webview.classList.remove('webview-hidden');
       tab.lastActive = Date.now();
-      if (tab._savedURL && tab._savedURL !== 'about:blank') { tab.webview.loadURL(tab._savedURL); tab._savedURL = null; tab._sleeping = false; }
-      urlInput.value = tab.webview.getURL() || '';
-      updateLockIcon(tab.webview.getURL());
+      // Wake sleeping tab on switch
+      if (tab._sleeping) {
+        wakeTab(tab);
+      } else {
+        tab.webview.classList.remove('webview-hidden');
+        if (tab._placeholder) { tab._placeholder.classList.add('hidden'); }
+        if (tab._savedURL && tab._savedURL !== 'about:blank') {
+          tab.webview.loadURL(tab._savedURL);
+          tab._savedURL = null;
+        }
+      }
+      try { urlInput.value = tab.webview.getURL() || ''; } catch (e) { urlInput.value = tab._savedURL || ''; }
+      updateLockIcon(tab.webview ? tab.webview.getURL() : '');
       updatePrivacyScore(tab);
     } else {
       tab.el.classList.remove('active');
       tab.webview.classList.add('webview-hidden');
+      if (tab._placeholder) tab._placeholder.classList.add('hidden');
     }
   });
   closeFindBar();
@@ -379,13 +409,15 @@ function closeTab(tabId) {
   const index = tabs.findIndex(t => t.id === tabId);
   if (index === -1) return;
   const tab = tabs[index];
-  lastClosedTab = { url: tab.webview.getURL() || NEW_TAB_HTML, title: tab.titleEl.innerText };
+  const urlForHistory = tab._savedURL || (tab.webview ? tab.webview.getURL() : '') || NEW_TAB_HTML;
+  lastClosedTab = { url: urlForHistory, title: tab.titleEl.innerText };
   tab.el.style.transition = 'opacity 0.15s, transform 0.15s';
   tab.el.style.opacity = '0';
   tab.el.style.transform = 'scale(0.9)';
   setTimeout(() => {
     tab.el.remove();
-    tab.webview.remove();
+    if (tab._placeholder) tab._placeholder.remove();
+    try { tab.webview.remove(); } catch (e) {}
     tabs.splice(index, 1);
     if (tabs.length === 0) createTab();
     else if (activeTabId === tabId) switchTab(tabs[index] ? tabs[index].id : tabs[index - 1].id);
@@ -526,20 +558,140 @@ document.addEventListener('mouseout', (e) => {
   if (!e.target.closest('.tab')) { const t = document.getElementById('tab-tooltip'); if (t) t.classList.add('hidden'); }
 });
 
-// --- AGGRESSIVE TAB SLEEPING ---
+// ═══════════════════════════════════════════════════════════
+//  TAB SLEEPING SYSTEM — 5-minute inactivity suspension
+// ═══════════════════════════════════════════════════════════
+
+const TAB_SLEEP_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Suspend a tab: blank the webview, show a placeholder overlay.
+ * Serialises URL+title for later restoration.
+ */
 function sleepTab(tab) {
-  if (tab.id === activeTabId || tab._sleeping) return;
+  if (!tab || tab.id === activeTabId || tab._sleeping) return;
+
+  // Don't sleep audible tabs or media sites
   try {
-    if (tab.webview && typeof tab.webview.isCurrentlyAudible === 'function' && tab.webview.isCurrentlyAudible()) return;
-  } catch (e) {}
-  const url = (tab.webview ? tab.webview.getURL() : '') || tab._savedURL || '';
-  if (url.includes('music.youtube.com') || url.includes('youtube.com') || url.includes('spotify.com') || url.includes('soundcloud.com')) return;
+    if (tab.webview.isCurrentlyAudible()) return;
+  } catch (_) {}
+  const url = tab._savedURL || (tab.webview ? tab.webview.getURL() : '');
+  if (!url || url === 'about:blank' || url.startsWith('data:')) return;
+  const musicSites = ['music.youtube.com', 'youtube.com', 'spotify.com', 'soundcloud.com', 'twitch.tv'];
+  if (musicSites.some(s => url.includes(s))) return;
+
+  // Serialize state
   tab._sleeping = true;
-  if (url && url !== 'about:blank' && !url.startsWith('data:')) { tab._savedURL = url; tab.webview.loadURL('about:blank'); }
+  tab._savedURL = url;
+  tab._sleepTitle = tab.titleEl.innerText;
+
+  // Blank the webview to free renderer process memory
+  try { tab.webview.loadURL('about:blank'); } catch (_) {}
+  tab.webview.classList.add('webview-hidden');
+
+  // ── Visual: tab strip moon indicator ──
+  markTabSleeping(tab, true);
+
+  // ── Visual: placeholder overlay in browser container ──
+  createSleepPlaceholder(tab);
 }
 
-setTimeout(() => { tabs.forEach(sleepTab); }, 60000);
-setInterval(() => { tabs.forEach(sleepTab); }, 30000);
+/**
+ * Wake a sleeping tab: remove placeholder, reload URL.
+ */
+function wakeTab(tab) {
+  if (!tab || !tab._sleeping) return;
+  tab._sleeping = false;
+  tab.lastActive = Date.now();
+
+  // Remove placeholder
+  if (tab._placeholder) {
+    tab._placeholder.style.opacity = '0';
+    tab._placeholder.style.transform = 'scale(1.02)';
+    setTimeout(() => {
+      if (tab._placeholder) { tab._placeholder.remove(); tab._placeholder = null; }
+    }, 220);
+  }
+
+  // Remove sleep indicators
+  markTabSleeping(tab, false);
+
+  // Restore webview
+  tab.webview.classList.remove('webview-hidden');
+  if (tab._savedURL && tab._savedURL !== 'about:blank') {
+    try { tab.webview.loadURL(tab._savedURL); } catch (_) {}
+    tab._savedURL = null;
+  }
+
+  // Make active
+  switchTab(tab.id);
+}
+
+/**
+ * Add / remove the moon icon and dimmed class on the tab strip element.
+ */
+function markTabSleeping(tab, sleeping) {
+  let moonEl = tab.el.querySelector('.tab-sleep-moon');
+  if (sleeping) {
+    tab.el.classList.add('sleeping');
+    if (!moonEl) {
+      moonEl = document.createElement('span');
+      moonEl.className = 'tab-sleep-moon material-icons-round';
+      moonEl.textContent = 'bedtime';
+      moonEl.title = 'Tab sleeping — click to wake';
+      // Insert before close button
+      const close = tab.el.querySelector('.tab-close');
+      tab.el.insertBefore(moonEl, close);
+    }
+  } else {
+    tab.el.classList.remove('sleeping');
+    if (moonEl) moonEl.remove();
+  }
+}
+
+/**
+ * Build the "click to wake" placeholder shown in the browser viewport.
+ */
+function createSleepPlaceholder(tab) {
+  if (tab._placeholder) return;
+  const pl = document.createElement('div');
+  pl.className = 'tab-sleep-placeholder webview-hidden';
+  pl.dataset.tabId = tab.id;
+  pl.innerHTML = `
+    <div class="sleep-inner">
+      <div class="sleep-rune">᛫</div>
+      <div class="sleep-moon-icon"><span class="material-icons-round">bedtime</span></div>
+      <div class="sleep-title">${esc(tab._sleepTitle || 'Sleeping Tab')}</div>
+      <div class="sleep-url">${esc((tab._savedURL || '').replace(/^https?:\/\//, ''))}</div>
+      <button class="sleep-wake-btn">
+        <span class="material-icons-round">play_arrow</span>
+        Click to Reload
+      </button>
+      <div class="sleep-hint">This tab was suspended to save memory.</div>
+    </div>
+  `;
+  // Wake on click anywhere on the overlay, not just the button
+  pl.addEventListener('click', () => wakeTab(tab));
+  browserContainer.appendChild(pl);
+  tab._placeholder = pl;
+
+  // Show it only if this is NOT the active tab
+  if (tab.id !== activeTabId) {
+    pl.classList.add('webview-hidden');
+  } else {
+    pl.classList.remove('webview-hidden');
+  }
+}
+
+// Periodic checker: every 60 s, sleep any tab idle > TAB_SLEEP_MS
+setInterval(() => {
+  const now = Date.now();
+  tabs.forEach(tab => {
+    if (tab.id === activeTabId || tab._sleeping) return;
+    if ((now - tab.lastActive) >= TAB_SLEEP_MS) sleepTab(tab);
+  });
+}, 60_000);
+
 
 // Update privacy score on URL change
 document.addEventListener('webview-navigate', (e) => {

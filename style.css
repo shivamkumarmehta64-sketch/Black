@@ -996,3 +996,179 @@ webview { display: flex; flex: 1; width: 100%; height: 100%; border: none; }
 
 /* Tab scroll buttons */
 .tab-scroll { display: none; }
+
+/* ═══════════════════════════════════════════════════
+   TAB SLEEPING SYSTEM — Visual styles
+   ═══════════════════════════════════════════════════ */
+
+/* ── Sleeping tab in tab strip ── */
+.tab.sleeping {
+  opacity: 0.4;
+  filter: saturate(0.2) brightness(0.6);
+  background: rgba(2, 5, 11, 0.6) !important;
+  border-color: rgba(0, 240, 255, 0.04) !important;
+  box-shadow: none !important;
+  transition: opacity 0.4s var(--ease), filter 0.4s var(--ease);
+}
+
+.tab.sleeping .tab-title {
+  color: rgba(125, 211, 252, 0.35) !important;
+  text-shadow: none !important;
+}
+
+/* Moon icon badge on sleeping tabs */
+.tab-sleep-moon {
+  font-size: 12px !important;
+  color: #7dd3fc;
+  opacity: 0.6;
+  margin-right: 4px;
+  flex-shrink: 0;
+  animation: moonDrift 3s ease-in-out infinite alternate;
+}
+
+@keyframes moonDrift {
+  0%   { opacity: 0.4; transform: translateY(0); }
+  100% { opacity: 0.8; transform: translateY(-1px); }
+}
+
+/* ── Sleep placeholder overlay (full browser viewport) ── */
+.tab-sleep-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(0, 240, 255, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(2, 132, 199, 0.03) 0%, transparent 50%),
+    #02050b;
+  z-index: 5;
+  cursor: pointer;
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+
+.tab-sleep-placeholder.webview-hidden { display: none; }
+
+/* Inner card */
+.sleep-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 56px;
+  background: rgba(7, 13, 24, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(0, 240, 255, 0.05) inset,
+    0 0 60px rgba(0, 240, 255, 0.05) inset,
+    0 20px 60px rgba(0, 0, 0, 0.9);
+  animation: sleepCardIn 0.4s var(--ease-bounce);
+  max-width: 480px;
+  text-align: center;
+}
+
+@keyframes sleepCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Floating runic glyph */
+.sleep-rune {
+  font-family: var(--font-cinzel);
+  font-size: 28px;
+  color: rgba(0, 240, 255, 0.15);
+  letter-spacing: 0.2em;
+  animation: runicDrift 4s ease-in-out infinite alternate;
+  user-select: none;
+}
+
+@keyframes runicDrift {
+  0%   { opacity: 0.1; transform: translateY(0) scale(1); }
+  100% { opacity: 0.25; transform: translateY(-4px) scale(1.05); }
+}
+
+/* Big moon icon */
+.sleep-moon-icon .material-icons-round {
+  font-size: 52px;
+  color: #38bdf8;
+  opacity: 0.7;
+  animation: moonGlow 3s ease-in-out infinite alternate;
+  display: block;
+}
+
+@keyframes moonGlow {
+  0%   { text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); opacity: 0.55; }
+  100% { text-shadow: 0 0 30px rgba(56, 189, 248, 0.7), 0 0 60px rgba(0, 240, 255, 0.3); opacity: 0.85; }
+}
+
+/* Sleeping tab title */
+.sleep-title {
+  font-family: var(--font-cinzel);
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0f9ff;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+/* URL line */
+.sleep-url {
+  font-family: var(--font-inter);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+/* Wake button */
+.sleep-wake-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 9px 22px;
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 24px;
+  color: var(--accent);
+  font-family: var(--font-cinzel);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), box-shadow 0.18s var(--ease), transform 0.12s var(--ease);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+.sleep-wake-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.25), 0 0 6px rgba(0, 240, 255, 0.15) inset;
+  transform: translateY(-1px);
+}
+
+.sleep-wake-btn:active {
+  transform: scale(0.97);
+}
+
+.sleep-wake-btn .material-icons-round {
+  font-size: 16px;
+}
+
+/* Hint line */
+.sleep-hint {
+  font-family: var(--font-inter);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.45;
+  margin-top: 2px;
+}
