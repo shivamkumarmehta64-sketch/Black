@@ -1,987 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Tab — Black Browser</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --accent: #00f0ff;
-      --accent-dim: rgba(0, 240, 255, 0.6);
-      --accent-faint: rgba(0, 240, 255, 0.12);
-      --glass-bg: rgba(5, 14, 28, 0.55);
-      --glass-border: rgba(0, 240, 255, 0.18);
-      --glass-hover: rgba(0, 240, 255, 0.09);
-      --text: #f0f9ff;
-      --text-dim: #7dd3fc;
-      --text-muted: #0284c7;
-      --font-cinzel: 'Cinzel', serif;
-      --font-inter: 'Inter', system-ui, sans-serif;
-      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-      --wallpaper: none;
-    }
-
-    /* ══════════════════════════════════════
-       BACKGROUND SYSTEM
-    ══════════════════════════════════════ */
-    body {
-      min-height: 100vh;
-      height: 100vh;
-      overflow: hidden;
-      font-family: var(--font-inter);
-      color: var(--text);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Mesh animated background */
-    #bg-layer {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background:
-        radial-gradient(ellipse 120% 80% at 50% -10%, rgba(0, 240, 255, 0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 60% at 100% 100%, rgba(0, 82, 155, 0.15) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 80% at 0% 80%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
-        linear-gradient(160deg, #02050b 0%, #040c1a 40%, #060d1f 70%, #02050b 100%);
-      background-attachment: fixed;
-    }
-
-    /* Wallpaper overlay */
-    #wallpaper-layer {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      opacity: 0;
-      transition: opacity 0.6s ease;
-    }
-    #wallpaper-layer.active {
-      opacity: 1;
-    }
-    /* Dark tint over wallpaper */
-    #wallpaper-layer::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(2, 5, 11, 0.62);
-    }
-
-    /* Animated mesh lines */
-    #mesh-canvas {
-      position: fixed;
-      inset: 0;
-      z-index: 2;
-      opacity: 0.35;
-      pointer-events: none;
-    }
-
-    /* Runic particles */
-    .runic-particles {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 3;
-      overflow: hidden;
-    }
-    .particle {
-      position: absolute;
-      font-family: var(--font-cinzel);
-      color: rgba(0, 240, 255, 0.18);
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
-      will-change: transform, opacity;
-      animation: runicDrift var(--dur, 14s) linear infinite;
-      animation-delay: var(--delay, 0s);
-      user-select: none;
-    }
-    @keyframes runicDrift {
-      0%   { transform: translateY(110vh) rotate(0deg) scale(0.7); opacity: 0; }
-      15%  { opacity: 0.7; }
-      85%  { opacity: 0.5; }
-      100% { transform: translateY(-15vh) rotate(60deg) scale(1.2); opacity: 0; }
-    }
-
-    /* ══════════════════════════════════════
-       MAIN LAYOUT
-    ══════════════════════════════════════ */
-    #page {
-      position: relative;
-      z-index: 10;
-      width: 100%;
-      max-width: 1100px;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    /* ══════════════════════════════════════
-       GLASS PANEL MIXIN
-    ══════════════════════════════════════ */
-    .glass {
-      background: var(--glass-bg);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid var(--glass-border);
-      border-radius: 18px;
-      box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(0, 240, 255, 0.12),
-        inset 0 0 40px rgba(0, 240, 255, 0.03);
-      transition: all 0.22s var(--ease-spring);
-    }
-
-    /* ══════════════════════════════════════
-       TOP ROW: CLOCK + WEATHER
-    ══════════════════════════════════════ */
-    .top-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      gap: 16px;
-    }
-
-    /* CLOCK GLASS PANEL */
-    .clock-panel {
-      flex: 1;
-      padding: 20px 28px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-      min-width: 280px;
-    }
-
-    .digital-clock {
-      font-family: var(--font-cinzel);
-      font-size: clamp(42px, 5vw, 72px);
-      font-weight: 900;
-      color: var(--accent);
-      letter-spacing: 0.05em;
-      line-height: 1;
-      text-shadow:
-        0 0 20px rgba(0, 240, 255, 0.7),
-        0 0 60px rgba(0, 240, 255, 0.25);
-      animation: clockPulse 2s ease-in-out infinite alternate;
-    }
-    @keyframes clockPulse {
-      from { text-shadow: 0 0 20px rgba(0,240,255,0.7), 0 0 60px rgba(0,240,255,0.25); }
-      to   { text-shadow: 0 0 28px rgba(0,240,255,0.9), 0 0 80px rgba(0,240,255,0.4); }
-    }
-
-    .clock-date {
-      font-size: 14px;
-      color: var(--text-dim);
-      font-weight: 500;
-      letter-spacing: 0.03em;
-    }
-
-    .clock-greeting {
-      font-family: var(--font-cinzel);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-top: 2px;
-    }
-
-    /* WEATHER GLASS PANEL */
-    .weather-panel {
-      padding: 18px 22px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-width: 140px;
-    }
-    .weather-icon {
-      font-size: 36px;
-      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.5));
-    }
-    .weather-temp {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--accent);
-    }
-    .weather-desc {
-      font-size: 11px;
-      color: var(--text-dim);
-      text-align: center;
-    }
-
-    /* ══════════════════════════════════════
-       SEARCH BOX
-    ══════════════════════════════════════ */
-    .search-wrapper {
-      width: 100%;
-      max-width: 680px;
-    }
-
-    .search-glass {
-      width: 100%;
-      height: 54px;
-      display: flex;
-      align-items: center;
-      padding: 0 16px 0 20px;
-      gap: 12px;
-      border-radius: 27px;
-      border: 1.5px solid rgba(0, 240, 255, 0.22);
-      background: rgba(5, 14, 28, 0.7);
-      backdrop-filter: blur(28px) saturate(200%);
-      -webkit-backdrop-filter: blur(28px) saturate(200%);
-      box-shadow:
-        0 4px 24px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(0, 240, 255, 0.15);
-      transition: all 0.25s var(--ease-spring);
-    }
-    .search-glass:focus-within {
-      border-color: var(--accent);
-      box-shadow:
-        0 8px 40px rgba(0, 0, 0, 0.7),
-        0 0 0 1px rgba(0, 240, 255, 0.3),
-        inset 0 1px 0 rgba(0, 240, 255, 0.2),
-        0 0 30px rgba(0, 240, 255, 0.12);
-      transform: translateY(-1px);
-    }
-
-    .search-rune {
-      font-family: var(--font-cinzel);
-      font-size: 22px;
-      font-weight: 900;
-      color: var(--accent);
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
-      flex-shrink: 0;
-      user-select: none;
-    }
-
-    #search-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      font-family: var(--font-inter);
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--text);
-      caret-color: var(--accent);
-    }
-    #search-input::placeholder {
-      color: rgba(0, 240, 255, 0.35);
-    }
-
-    .engine-btn {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(0, 240, 255, 0.1);
-      border: 1px solid rgba(0, 240, 255, 0.25);
-      color: var(--accent);
-      padding: 5px 12px;
-      border-radius: 14px;
-      font-size: 11px;
-      font-weight: 700;
-      font-family: var(--font-inter);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-      letter-spacing: 0.03em;
-    }
-    .engine-btn:hover {
-      background: rgba(0, 240, 255, 0.2);
-      border-color: var(--accent);
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
-    }
-    .engine-btn .material-icons-round { font-size: 14px; }
-
-    /* ══════════════════════════════════════
-       SPEED DIALS — GLASS GRID
-    ══════════════════════════════════════ */
-    .dials-section {
-      width: 100%;
-    }
-    .section-label {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--text-muted);
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-      padding-left: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .section-label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, rgba(0,240,255,0.2), transparent);
-    }
-
-    .speed-dial-grid {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 12px;
-    }
-
-    .sd-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px 8px 12px;
-      border-radius: 16px;
-      text-decoration: none;
-      color: var(--text);
-      background: rgba(5, 14, 28, 0.55);
-      backdrop-filter: blur(20px) saturate(160%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-      border: 1px solid rgba(0, 240, 255, 0.1);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-      transition: all 0.22s var(--ease-spring);
-      cursor: pointer;
-      will-change: transform;
-    }
-    .sd-card:hover {
-      background: rgba(0, 240, 255, 0.08);
-      border-color: rgba(0, 240, 255, 0.4);
-      box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.6),
-        0 0 20px rgba(0, 240, 255, 0.2),
-        inset 0 1px 0 rgba(0, 240, 255, 0.2);
-      transform: translateY(-4px) scale(1.04);
-    }
-    .sd-card:active { transform: translateY(-1px) scale(1.01); }
-
-    .sd-icon-ring {
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      background: rgba(0, 240, 255, 0.06);
-      border: 1px solid rgba(0, 240, 255, 0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      transition: border-color 0.2s ease;
-    }
-    .sd-card:hover .sd-icon-ring {
-      border-color: rgba(0, 240, 255, 0.45);
-    }
-    .sd-icon-ring img {
-      width: 26px;
-      height: 26px;
-      object-fit: contain;
-    }
-    .sd-icon-ring .fallback-letter {
-      font-family: var(--font-cinzel);
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--accent);
-      text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-    }
-
-    .sd-label {
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--text-dim);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-      text-align: center;
-      transition: color 0.2s;
-    }
-    .sd-card:hover .sd-label { color: var(--accent); }
-
-    /* Add dial button */
-    .sd-add-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px 8px 12px;
-      border-radius: 16px;
-      border: 1px dashed rgba(0, 240, 255, 0.2);
-      background: transparent;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.22s var(--ease-spring);
-      font-family: var(--font-inter);
-      font-size: 10px;
-    }
-    .sd-add-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: rgba(0, 240, 255, 0.05);
-    }
-    .sd-add-btn .material-icons-round { font-size: 22px; }
-
-    /* ══════════════════════════════════════
-       QUICK LINKS ROW
-    ══════════════════════════════════════ */
-    .quick-links-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .ql-pill {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-dim);
-      text-decoration: none;
-      background: rgba(5, 14, 28, 0.6);
-      border: 1px solid rgba(0, 240, 255, 0.12);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      transition: all 0.18s var(--ease-spring);
-      will-change: transform;
-    }
-    .ql-pill:hover {
-      background: rgba(0, 240, 255, 0.12);
-      border-color: var(--accent);
-      color: var(--accent);
-      box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
-      transform: translateY(-2px);
-    }
-    .ql-pill .material-icons-round { font-size: 13px; }
-
-    /* ══════════════════════════════════════
-       BOTTOM BAR
-    ══════════════════════════════════════ */
-    .bottom-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 20px;
-      background: rgba(2, 5, 11, 0.7);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(0, 240, 255, 0.08);
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .bottom-bar .brand {
-      font-family: var(--font-cinzel);
-      color: var(--accent);
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* ══════════════════════════════════════
-       WALLPAPER PICKER BUTTON
-    ══════════════════════════════════════ */
-    .wp-btn {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      background: transparent;
-      border: 1px solid rgba(0, 240, 255, 0.2);
-      color: var(--text-muted);
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-family: var(--font-inter);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .wp-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: rgba(0, 240, 255, 0.07);
-    }
-    .wp-btn .material-icons-round { font-size: 13px; }
-
-    /* ══════════════════════════════════════
-       WALLPAPER PICKER PANEL
-    ══════════════════════════════════════ */
-    #wp-panel {
-      position: fixed;
-      bottom: 44px;
-      right: 16px;
-      z-index: 9999;
-      padding: 16px;
-      border-radius: 18px;
-      width: 280px;
-      display: none;
-    }
-    #wp-panel.open { display: block; }
-    #wp-panel h4 {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 12px;
-    }
-    .wp-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .wp-thumb {
-      aspect-ratio: 16/9;
-      border-radius: 8px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      overflow: hidden;
-      transition: all 0.2s;
-    }
-    .wp-thumb:hover { border-color: var(--accent); transform: scale(1.04); }
-    .wp-thumb.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,240,255,0.4); }
-    .wp-thumb.none-thumb {
-      background: linear-gradient(135deg, #02050b, #040c1a);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-
-    /* ══════════════════════════════════════
-       CUSTOM SCROLLBAR
-    ══════════════════════════════════════ */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.2); border-radius: 2px; }
-
-    /* ══════════════════════════════════════
-       FADE IN ANIMATION
-    ══════════════════════════════════════ */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .clock-panel   { animation: fadeUp 0.5s var(--ease-spring) both; }
-    .weather-panel { animation: fadeUp 0.5s 0.1s var(--ease-spring) both; }
-    .search-wrapper{ animation: fadeUp 0.5s 0.15s var(--ease-spring) both; }
-    .dials-section { animation: fadeUp 0.5s 0.2s var(--ease-spring) both; }
-    .ql-section    { animation: fadeUp 0.5s 0.25s var(--ease-spring) both; }
-  </style>
+    <meta charset="UTF-8">
+    <title>New Tab</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #060912;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+        }
+        #bg-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+        }
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at center, transparent 0%, #060912 100%);
+            pointer-events: none;
+        }
+        .container {
+            display: flex; flex-direction: column; align-items: center; z-index: 1; width: 100%;
+        }
+        .clock {
+            font-size: clamp(64px, 10vw, 120px); font-weight: 200; line-height: 1; text-shadow: 0 4px 24px rgba(0,0,0,0.5);
+        }
+        .date {
+            font-size: 16px; color: rgba(255,255,255,0.7); margin-top: 8px; margin-bottom: 4px;
+        }
+        .greeting {
+            font-size: 24px; font-weight: 300; color: rgba(255,255,255,0.9); margin-bottom: 40px;
+        }
+        .search-bar {
+            width: min(600px, 85vw); height: 48px; border-radius: 24px;
+            background: rgba(8,12,24,0.55);
+            border: 1px solid rgba(0,212,255,0.15);
+            backdrop-filter: blur(20px);
+            display: flex; align-items: center; padding: 0 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: all 0.3s ease; margin-bottom: 48px;
+        }
+        .search-bar:focus-within {
+            background: rgba(8,12,24,0.75); border-color: rgba(0,212,255,0.4);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 2px rgba(0,212,255,0.1);
+        }
+        .search-icon {
+            width: 20px; height: 20px; fill: rgba(255,255,255,0.5); margin-right: 12px;
+        }
+        .search-input {
+            flex: 1; background: transparent; border: none; outline: none; color: white;
+            font-size: 16px; font-family: 'Inter', sans-serif;
+        }
+        .search-input::placeholder { color: rgba(255,255,255,0.4); }
+        .mic-icon {
+            width: 20px; height: 20px; fill: rgba(255,255,255,0.5); margin-left: 12px; cursor: pointer;
+        }
+        .speed-dial {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; max-width: 800px;
+        }
+        @media (max-width: 600px) { .speed-dial { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+        .dial-card {
+            width: 110px; height: 110px; border-radius: 16px;
+            background: rgba(8,12,24,0.55); border: 1px solid rgba(0,212,255,0.15);
+            backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-decoration: none; color: white; transition: all 0.2s ease;
+        }
+        .dial-card:hover {
+            transform: translateY(-4px); background: rgba(8,12,24,0.7);
+            border-color: rgba(0,212,255,0.4); box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(0,212,255,0.1);
+        }
+        .dial-icon {
+            width: 40px; height: 40px; margin-bottom: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); font-size: 20px; font-weight: 500;
+        }
+        .dial-icon img { width: 100%; height: 100%; border-radius: 8px; object-fit: contain; }
+        .dial-name { font-size: 12px; font-weight: 400; opacity: 0.8; }
+        .dock {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            height: 48px; border-radius: 24px;
+            background: rgba(8,12,24,0.55); border: 1px solid rgba(0,212,255,0.15);
+            backdrop-filter: blur(20px); display: flex; align-items: center; padding: 0 16px; gap: 16px;
+        }
+        .dock-item {
+            width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; text-decoration: none;
+        }
+        .dock-item svg { width: 18px; height: 18px; fill: rgba(255,255,255,0.7); }
+        .dock-item:hover { background: rgba(255,255,255,0.1); }
+        .dock-item:hover svg { fill: white; }
+        .wallpaper-picker { position: absolute; top: 20px; right: 20px; }
+        .wp-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(8,12,24,0.55);
+            border: 1px solid rgba(0,212,255,0.15); backdrop-filter: blur(20px);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+        }
+        .wp-btn:hover { background: rgba(8,12,24,0.8); }
+        .wp-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.7); }
+        .wp-menu {
+            position: absolute; top: 50px; right: 0; width: 220px; background: rgba(8,12,24,0.85);
+            border: 1px solid rgba(0,212,255,0.15); backdrop-filter: blur(24px);
+            border-radius: 12px; padding: 16px; display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .wp-menu.show { display: grid; }
+        .wp-swatch { width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+        .wp-swatch:hover { border-color: rgba(255,255,255,0.5); }
+        .wp-swatch.active { border-color: #00d4ff; }
+        .wp-upload { grid-column: span 3; text-align: center; padding: 8px; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 6px; margin-top: 8px; }
+    </style>
 </head>
 <body>
-
-  <!-- Background Layers -->
-  <div id="bg-layer"></div>
-  <div id="wallpaper-layer"></div>
-  <canvas id="mesh-canvas"></canvas>
-  <div class="runic-particles" id="particles-container"></div>
-
-  <!-- Main Content -->
-  <div id="page">
-
-    <!-- Top Row: Clock + Weather -->
-    <div class="top-row">
-      <div class="glass clock-panel">
-        <div class="digital-clock" id="clock">00:00:00</div>
-        <div class="clock-date" id="date-display">Saturday, August 1</div>
-        <div class="clock-greeting" id="greeting">Good Evening, Phantom</div>
-      </div>
-
-      <div class="glass weather-panel">
-        <div class="weather-icon" id="weather-icon">🌙</div>
-        <div class="weather-temp" id="weather-temp">—</div>
-        <div class="weather-desc" id="weather-desc">Black Night</div>
-      </div>
+    <canvas id="bg-canvas"></canvas>
+    <div id="overlay"></div>
+    
+    <div class="wallpaper-picker">
+        <div class="wp-btn" id="wp-btn" title="Change Background">
+            <svg viewBox="0 0 24 24"><path d="M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19M8.5,13.5L11,16.5L14.5,12L19,18H5L8.5,13.5Z" /></svg>
+        </div>
+        <div class="wp-menu" id="wp-menu">
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #060912, #1a1a2e)" data-bg="gradient-1"></div>
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364)" data-bg="gradient-2"></div>
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #141e30, #243b55)" data-bg="gradient-3"></div>
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #4b134f, #c94b4b)" data-bg="gradient-4"></div>
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #000000, #434343)" data-bg="gradient-5"></div>
+            <div class="wp-swatch" style="background: linear-gradient(135deg, #0f0c29, #302b63, #24243e)" data-bg="gradient-6"></div>
+            <div class="wp-upload" id="wp-upload">Upload Image</div>
+            <input type="file" id="wp-file" style="display:none" accept="image/*">
+        </div>
     </div>
 
-    <!-- Search Bar -->
-    <div class="search-wrapper">
-      <form class="search-glass" id="search-form" autocomplete="off">
-        <span class="search-rune">ᚠ</span>
-        <input type="text" id="search-input" placeholder="Search the Abyss or enter URL..." autofocus>
-        <button type="button" class="engine-btn" id="engine-btn">
-          <span id="engine-name">Google</span>
-          <span class="material-icons-round">expand_more</span>
-        </button>
-      </form>
+    <div class="container">
+        <div class="clock" id="clock">00:00</div>
+        <div class="date" id="date">Monday, January 1</div>
+        <div class="greeting" id="greeting">Good Morning, Shiva</div>
+        
+        <div class="search-bar">
+            <svg class="search-icon" viewBox="0 0 24 24"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" /></svg>
+            <input type="text" class="search-input" id="search-input" placeholder="Search Google or type a URL..." autocomplete="off">
+            <svg class="mic-icon" viewBox="0 0 24 24"><path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" /></svg>
+        </div>
+
+        <div class="speed-dial" id="speed-dial">
+            <!-- Populated by JS -->
+        </div>
     </div>
 
-    <!-- Speed Dials -->
-    <div class="dials-section">
-      <div class="section-label">Speed Dials</div>
-      <div class="speed-dial-grid" id="speed-dials"></div>
+    <div class="dock">
+        <a href="about:blank" class="dock-item" title="Bookmarks"><svg viewBox="0 0 24 24"><path d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5A2,2 0 0,0 17,3Z" /></svg></a>
+        <a href="about:blank" class="dock-item" title="History"><svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" /></svg></a>
+        <a href="#" class="dock-item" title="Settings"><svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg></a>
     </div>
 
-    <!-- Quick Links -->
-    <div class="dials-section ql-section">
-      <div class="section-label">Quick Links</div>
-      <div class="quick-links-row" id="quick-links"></div>
-    </div>
+    <script>
+        // Clock & Date
+        function updateTime() {
+            const now = new Date();
+            let h = now.getHours();
+            let m = now.getMinutes();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hr = h % 12 || 12;
+            document.getElementById('clock').textContent = `${hr.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', options);
 
-  </div>
-
-  <!-- Wallpaper Picker -->
-  <div id="wp-panel" class="glass">
-    <h4>Background</h4>
-    <div class="wp-grid" id="wp-grid"></div>
-  </div>
-
-  <!-- Bottom Status Bar -->
-  <div class="bottom-bar">
-    <span id="stats-display">Tabs Open: 1 | Session: Active</span>
-    <span class="brand">ᚲ Black Browser v1.0.0</span>
-    <button class="wp-btn" id="wp-toggle-btn">
-      <span class="material-icons-round">wallpaper</span>
-      Wallpaper
-    </button>
-  </div>
-
-  <script>
-  // ═══════════════════════════════════════
-  //  LIVE CLOCK & DATE & GREETING
-  // ═══════════════════════════════════════
-  function updateClock() {
-    const now = new Date();
-    const H = String(now.getHours()).padStart(2,'0');
-    const M = String(now.getMinutes()).padStart(2,'0');
-    const S = String(now.getSeconds()).padStart(2,'0');
-    document.getElementById('clock').textContent = `${H}:${M}:${S}`;
-
-    const h = now.getHours();
-    let g = 'Good Evening, Phantom';
-    if (h < 5)  g = 'Good Night, Shadow';
-    else if (h < 12) g = 'Good Morning, Sovereign';
-    else if (h < 17) g = 'Good Afternoon, Wanderer';
-    document.getElementById('greeting').textContent = g;
-
-    const opts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
-    document.getElementById('date-display').textContent = now.toLocaleDateString('en-US', opts);
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
-
-  // ═══════════════════════════════════════
-  //  TAB STATS
-  // ═══════════════════════════════════════
-  function updateTabStats() {
-    const count = localStorage.getItem('bb-tab-count') || 1;
-    const el = document.getElementById('stats-display');
-    if (el) el.textContent = `Tabs Open: ${count} | Session: Active`;
-  }
-  updateTabStats();
-  window.addEventListener('storage', updateTabStats);
-
-  // ═══════════════════════════════════════
-  //  WEATHER (time-based icons)
-  // ═══════════════════════════════════════
-  function setWeatherByTime() {
-    const h = new Date().getHours();
-    const iconEl = document.getElementById('weather-icon');
-    const descEl = document.getElementById('weather-desc');
-    const tempEl = document.getElementById('weather-temp');
-    const presets = [
-      { range: [0, 5],  icon: '🌑', temp: '—',  desc: 'Deep Night' },
-      { range: [5, 7],  icon: '🌅', temp: '—',  desc: 'Dawn Rising' },
-      { range: [7, 12], icon: '☀️', temp: '—',  desc: 'Morning Light' },
-      { range: [12,17], icon: '🌤️', temp: '—', desc: 'Clear Day' },
-      { range: [17,20], icon: '🌇', temp: '—',  desc: 'Dusk Falls' },
-      { range: [20,24], icon: '🌙', temp: '—',  desc: 'Black Night' },
-    ];
-    const p = presets.find(p => h >= p.range[0] && h < p.range[1]) || presets[5];
-    if (iconEl) iconEl.textContent = p.icon;
-    if (descEl) descEl.textContent = p.desc;
-    if (tempEl) tempEl.textContent = p.temp;
-
-    // Try browser geolocation weather API (open, no key)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const {latitude, longitude} = pos.coords;
-        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`)
-          .then(r => r.json())
-          .then(data => {
-            const wc = data.current_weather;
-            if (!wc) return;
-            const t = Math.round(wc.temperature);
-            if (tempEl) tempEl.textContent = `${t}°C`;
-            // WMO weather code icons
-            const code = wc.weathercode;
-            let icon = '☀️';
-            if (code >= 1 && code <= 3) icon = '⛅';
-            else if (code >= 45 && code <= 48) icon = '🌫️';
-            else if (code >= 51 && code <= 67) icon = '🌧️';
-            else if (code >= 71 && code <= 77) icon = '❄️';
-            else if (code >= 80 && code <= 82) icon = '🌦️';
-            else if (code >= 95) icon = '⛈️';
-            if (iconEl) iconEl.textContent = icon;
-          }).catch(() => {});
-      }, () => {});
-    }
-  }
-  setWeatherByTime();
-
-  // ═══════════════════════════════════════
-  //  SEARCH ENGINE
-  // ═══════════════════════════════════════
-  let engineIdx = 0;
-  const engines = [
-    { name: 'Google',     url: 'https://www.google.com/search?q=' },
-    { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
-    { name: 'Bing',       url: 'https://www.bing.com/search?q=' },
-    { name: 'Brave',      url: 'https://search.brave.com/search?q=' },
-    { name: 'Ecosia',     url: 'https://www.ecosia.org/search?q=' },
-  ];
-  document.getElementById('engine-btn').addEventListener('click', () => {
-    engineIdx = (engineIdx + 1) % engines.length;
-    document.getElementById('engine-name').textContent = engines[engineIdx].name;
-  });
-  document.getElementById('search-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const q = document.getElementById('search-input').value.trim();
-    if (!q) return;
-    if (/^https?:\/\//.test(q)) { location.href = q; return; }
-    if (/^[\w-]+(\.[a-z]{2,})+$/.test(q)) { location.href = 'https://' + q; return; }
-    location.href = engines[engineIdx].url + encodeURIComponent(q);
-  });
-
-  // ═══════════════════════════════════════
-  //  SPEED DIALS
-  // ═══════════════════════════════════════
-  const DIALS = [
-    { name: 'Google',     url: 'https://www.google.com',    icon: 'https://www.google.com/favicon.ico' },
-    { name: 'YouTube',    url: 'https://www.youtube.com',   icon: 'https://www.youtube.com/favicon.ico' },
-    { name: 'GitHub',     url: 'https://github.com',        icon: 'https://github.com/favicon.ico' },
-    { name: 'Reddit',     url: 'https://www.reddit.com',    icon: 'https://www.reddit.com/favicon.ico' },
-    { name: 'ChatGPT',    url: 'https://chatgpt.com',       icon: 'https://chatgpt.com/favicon.ico' },
-    { name: 'Claude AI',  url: 'https://claude.ai',         icon: 'https://claude.ai/favicon.ico' },
-    { name: 'Amazon',     url: 'https://www.amazon.com',    icon: 'https://www.amazon.com/favicon.ico' },
-    { name: 'Wikipedia',  url: 'https://www.wikipedia.org', icon: 'https://www.wikipedia.org/favicon.ico' },
-  ];
-
-  const sdContainer = document.getElementById('speed-dials');
-  DIALS.forEach(sd => {
-    const a = document.createElement('a');
-    a.className = 'sd-card';
-    a.href = sd.url;
-
-    const ring = document.createElement('div');
-    ring.className = 'sd-icon-ring';
-
-    const img = document.createElement('img');
-    img.setAttribute('loading', 'lazy');
-    img.setAttribute('data-src', sd.icon);
-    img.alt = '';
-    img.onerror = function() {
-      this.style.display = 'none';
-      const fb = document.createElement('span');
-      fb.className = 'fallback-letter';
-      fb.textContent = sd.name.charAt(0);
-      ring.appendChild(fb);
-    };
-    ring.appendChild(img);
-
-    const label = document.createElement('div');
-    label.className = 'sd-label';
-    label.textContent = sd.name;
-
-    a.appendChild(ring);
-    a.appendChild(label);
-    sdContainer.appendChild(a);
-  });
-
-  // Add button
-  const addBtn = document.createElement('div');
-  addBtn.className = 'sd-add-btn';
-  addBtn.innerHTML = '<span class="material-icons-round">add</span><span>Add</span>';
-  sdContainer.appendChild(addBtn);
-
-  // IntersectionObserver lazy favicon load
-  const sdObserver = new IntersectionObserver((entries, obs) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const img = entry.target.querySelector('img[data-src]');
-      if (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }
-      obs.unobserve(entry.target);
-    });
-  }, { rootMargin: '80px' });
-  document.querySelectorAll('.sd-card').forEach(c => sdObserver.observe(c));
-
-  // ═══════════════════════════════════════
-  //  QUICK LINKS
-  // ═══════════════════════════════════════
-  const LINKS = [
-    { name: 'FMHY',             url: 'https://fmhy.net',              icon: 'redeem' },
-    { name: 'AlternativeTo',    url: 'https://alternativeto.net',     icon: 'swap_horiz' },
-    { name: 'Open Library',     url: 'https://openlibrary.org',       icon: 'auto_stories' },
-    { name: 'Proton VPN',       url: 'https://protonvpn.com',         icon: 'vpn_lock' },
-    { name: 'Gutenberg',        url: 'https://www.gutenberg.org',     icon: 'menu_book' },
-    { name: 'Archive.org',      url: 'https://archive.org',           icon: 'archive' },
-    { name: 'MDN Docs',         url: 'https://developer.mozilla.org', icon: 'code' },
-    { name: 'HackerNews',       url: 'https://news.ycombinator.com',  icon: 'trending_up' },
-  ];
-  const qlContainer = document.getElementById('quick-links');
-  LINKS.forEach(l => {
-    const a = document.createElement('a');
-    a.className = 'ql-pill';
-    a.href = l.url;
-    a.innerHTML = `<span class="material-icons-round">${l.icon}</span>${l.name}`;
-    qlContainer.appendChild(a);
-  });
-
-  // ═══════════════════════════════════════
-  //  RUNIC PARTICLES
-  // ═══════════════════════════════════════
-  const RUNES = ['ᛉ','ᚠ','ᚲ','ᛟ','ᚱ','ᚦ','ᛏ','ᛗ'];
-  const pc = document.getElementById('particles-container');
-  for (let i = 0; i < 14; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    p.textContent = RUNES[Math.floor(Math.random() * RUNES.length)];
-    p.style.setProperty('--dur', (10 + Math.random() * 10) + 's');
-    p.style.setProperty('--delay', (Math.random() * 14) + 's');
-    p.style.left = Math.random() * 100 + '%';
-    p.style.fontSize = (11 + Math.random() * 14) + 'px';
-    pc.appendChild(p);
-  }
-
-  // ═══════════════════════════════════════
-  //  ANIMATED MESH LINES (Canvas)
-  // ═══════════════════════════════════════
-  (function meshCanvas() {
-    const canvas = document.getElementById('mesh-canvas');
-    const ctx = canvas.getContext('2d');
-    let W, H, nodes = [];
-
-    function resize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-    }
-
-    function initNodes(n = 40) {
-      nodes = [];
-      for (let i = 0; i < n; i++) {
-        nodes.push({
-          x: Math.random() * W, y: Math.random() * H,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-        });
-      }
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      const dist = 140;
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i];
-        a.x += a.vx; a.y += a.vy;
-        if (a.x < 0 || a.x > W) a.vx *= -1;
-        if (a.y < 0 || a.y > H) a.vy *= -1;
-        for (let j = i + 1; j < nodes.length; j++) {
-          const b = nodes[j];
-          const dx = a.x - b.x, dy = a.y - b.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < dist) {
-            const alpha = (1 - d / dist) * 0.25;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(0, 240, 255, ${alpha})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          }
+            let greet = 'Evening';
+            if (h < 12) greet = 'Morning';
+            else if (h < 17) greet = 'Afternoon';
+            document.getElementById('greeting').textContent = `Good ${greet}, Shiva`;
         }
-        // Node dot
-        ctx.beginPath();
-        ctx.arc(a.x, a.y, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.3)';
-        ctx.fill();
-      }
-      requestAnimationFrame(draw);
-    }
-    window.addEventListener('resize', () => { resize(); initNodes(); });
-    resize(); initNodes(); draw();
-  })();
+        setInterval(updateTime, 1000);
+        updateTime();
 
-  // ═══════════════════════════════════════
-  //  WALLPAPER PICKER
-  // ═══════════════════════════════════════
-  const WALLPAPERS = [
-    { label: 'None', url: null },
-    { label: 'Aurora', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80' },
-    { label: 'Galaxy', url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&q=80' },
-    { label: 'Neon City', url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1920&q=80' },
-    { label: 'Mountains', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80' },
-    { label: 'Abstract', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1920&q=80' },
-  ];
+        // Search
+        const searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = searchInput.value.trim();
+                if (!val) return;
+                if (/^(https?:\/\/|[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$)/i.test(val)) {
+                    let url = val;
+                    if (!url.startsWith('http')) url = 'https://' + url;
+                    window.location.href = url;
+                } else {
+                    window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(val);
+                }
+            }
+        });
+        searchInput.focus();
 
-  const wpLayer = document.getElementById('wallpaper-layer');
-  const wpPanel = document.getElementById('wp-panel');
-  const wpGrid  = document.getElementById('wp-grid');
-  let currentWP = localStorage.getItem('bb-wallpaper') || null;
+        // Speed Dial
+        const dials = [
+            { name: 'Google', url: 'https://www.google.com', domain: 'google.com' },
+            { name: 'YouTube', url: 'https://www.youtube.com', domain: 'youtube.com' },
+            { name: 'GitHub', url: 'https://github.com', domain: 'github.com' },
+            { name: 'Gmail', url: 'https://mail.google.com', domain: 'google.com' },
+            { name: 'Reddit', url: 'https://www.reddit.com', domain: 'reddit.com' },
+            { name: 'X', url: 'https://x.com', domain: 'x.com' },
+            { name: 'Wikipedia', url: 'https://www.wikipedia.org', domain: 'wikipedia.org' },
+            { name: 'ChatGPT', url: 'https://chatgpt.com', domain: 'chatgpt.com' }
+        ];
+        
+        const dialContainer = document.getElementById('speed-dial');
+        dials.forEach(d => {
+            const a = document.createElement('a');
+            a.href = d.url;
+            a.className = 'dial-card';
+            const firstLetter = d.name.charAt(0);
+            const favUrl = `https://www.google.com/s2/favicons?domain=${d.domain}&sz=64`;
+            a.innerHTML = `
+                <div class="dial-icon">
+                    <img src="${favUrl}" alt="${firstLetter}" onerror="this.style.display='none'; this.parentElement.innerText='${firstLetter}'" />
+                </div>
+                <div class="dial-name">${d.name}</div>
+            `;
+            dialContainer.appendChild(a);
+        });
 
-  function applyWallpaper(url) {
-    currentWP = url;
-    if (url) {
-      wpLayer.style.backgroundImage = `url('${url}')`;
-      wpLayer.classList.add('active');
-    } else {
-      wpLayer.classList.remove('active');
-      wpLayer.style.backgroundImage = 'none';
-    }
-    localStorage.setItem('bb-wallpaper', url || '');
-    document.querySelectorAll('.wp-thumb').forEach(t => {
-      t.classList.toggle('active', t.dataset.url === (url || ''));
-    });
-  }
+        // Wallpaper Picker
+        const wpBtn = document.getElementById('wp-btn');
+        const wpMenu = document.getElementById('wp-menu');
+        const wpFile = document.getElementById('wp-file');
+        const wpUpload = document.getElementById('wp-upload');
+        const overlay = document.getElementById('overlay');
+        const canvas = document.getElementById('bg-canvas');
 
-  WALLPAPERS.forEach(wp => {
-    const thumb = document.createElement('div');
-    thumb.className = 'wp-thumb' + (wp.url === null ? ' none-thumb' : '');
-    thumb.dataset.url = wp.url || '';
-    if (wp.url) {
-      thumb.style.backgroundImage = `url('${wp.url}')`;
-      thumb.style.backgroundSize = 'cover';
-      thumb.style.backgroundPosition = 'center';
-    } else {
-      thumb.textContent = 'None';
-    }
-    if ((wp.url || '') === (currentWP || '')) thumb.classList.add('active');
-    thumb.addEventListener('click', () => applyWallpaper(wp.url));
-    wpGrid.appendChild(thumb);
-  });
+        wpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            wpMenu.classList.toggle('show');
+        });
+        document.addEventListener('click', (e) => {
+            if (!wpMenu.contains(e.target) && !wpBtn.contains(e.target)) {
+                wpMenu.classList.remove('show');
+            }
+        });
 
-  // Restore on load
-  if (currentWP) applyWallpaper(currentWP);
+        function setBg(type, val) {
+            if (type === 'gradient') {
+                document.body.style.backgroundImage = val;
+                document.body.style.backgroundSize = 'cover';
+                canvas.style.opacity = '0.3'; 
+            } else if (type === 'image') {
+                document.body.style.backgroundImage = `url(${val})`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+                canvas.style.opacity = '0';
+            } else {
+                document.body.style.backgroundImage = '';
+                canvas.style.opacity = '1';
+            }
+            localStorage.setItem('black_nt_bg_type', type);
+            localStorage.setItem('black_nt_bg_val', val);
+        }
 
-  document.getElementById('wp-toggle-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    wpPanel.classList.toggle('open');
-  });
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#wp-panel') && !e.target.closest('#wp-toggle-btn')) {
-      wpPanel.classList.remove('open');
-    }
-  });
-  </script>
+        document.querySelectorAll('.wp-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                setBg('gradient', sw.style.background);
+                wpMenu.classList.remove('show');
+            });
+        });
+
+        wpUpload.addEventListener('click', () => wpFile.click());
+        wpFile.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    setBg('image', ev.target.result);
+                    wpMenu.classList.remove('show');
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Init BG
+        const savedType = localStorage.getItem('black_nt_bg_type');
+        const savedVal = localStorage.getItem('black_nt_bg_val');
+        if (savedType && savedVal) {
+            setBg(savedType, savedVal);
+        }
+
+        // Animated Canvas Mesh
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 2 + 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(0, 212, 255, ${0.15 - dist/1000})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
 </body>
 </html>

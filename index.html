@@ -1,300 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Black Browser | Dark Fantasy Edition</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Material Icons are NOT in style.css so this stays -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Browser</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="loading-bar" class="loading-bar hidden"></div>
-
-  <!-- Tab Strip (sits in titlebar area with runic motifs) -->
-  <div id="tab-strip">
-    <div class="runic-emblem" title="Black Engine Artifact">ᛉ</div>
-    <div class="tabs-container" id="tabs-container"></div>
-    <button id="new-tab-btn" class="new-tab-btn" title="Summon New Tab (Ctrl+T)"><span class="material-icons-round">add</span></button>
-  </div>
-
-  <!-- Toolbar -->
-  <div id="toolbar">
-    <div class="nav-buttons">
-      <button id="back-btn" class="tb-btn nav-circle-btn" title="Back (Alt+←)"><span class="material-icons-round">arrow_back</span></button>
-      <button id="forward-btn" class="tb-btn nav-circle-btn" title="Forward (Alt+→)"><span class="material-icons-round">arrow_forward</span></button>
-      <button id="reload-btn" class="tb-btn nav-circle-btn" title="Reload (Ctrl+R)"><span class="material-icons-round">refresh</span></button>
-    </div>
-
-    <div id="url-bar">
-      <span id="sec-dot" class="sec-dot secure" title="Connection security"></span>
-      <img id="url-favicon" class="url-favicon" src="" alt="" onerror="this.style.display='none'">
-      <input type="text" id="url-input" class="address-bar" placeholder="Enter URL or search the Abyss..." autocomplete="off" spellcheck="false">
-      <span id="privacy-score" class="privacy-score hidden" title="Privacy score">A</span>
-      <span id="omnibox-rune" class="omnibox-rune" title="Black Engine">ᚠ</span>
-    </div>
-
-    <div class="right-buttons">
-      <button id="pip-btn" class="tb-btn right-circle-btn" title="Picture-in-Picture Mode"><span class="material-icons-round">picture_in_picture_alt</span></button>
-      <button id="shield-btn" class="tb-btn shield-btn right-circle-btn" title="Privacy & security"><span class="material-icons-round">shield</span><span id="shield-badge" class="shield-badge hidden">0</span></button>
-      <button id="star-btn" class="tb-btn star-btn right-circle-btn" title="Bind Bookmark (Ctrl+D)"><span class="material-icons-round">star_border</span></button>
-      <button id="profile-btn" class="tb-btn profile-btn right-circle-btn" title="Profile"><span class="material-icons-round">account_circle</span></button>
-      <button id="menu-btn" class="tb-btn menu-trigger right-circle-btn" title="Customize and control Black"><span class="material-icons-round">more_vert</span></button>
-    </div>
-  </div>
-
-  <!-- Menu Dropdown -->
-  <div id="menu-dropdown" class="chrome-menu hidden">
-    <div class="menu-item" data-action="newtab"><span class="material-icons-round">tab</span> New Tab<span class="menu-shortcut">Ctrl+T</span></div>
-    <div class="menu-item" data-action="history"><span class="material-icons-round">history</span> History<span class="menu-shortcut">Ctrl+H</span></div>
-    <div class="menu-item" data-action="downloads"><span class="material-icons-round">download</span> Downloads<span class="menu-shortcut">Ctrl+J</span></div>
-    <div class="menu-item" data-action="bookmarks"><span class="material-icons-round">star</span> Bookmarks<span class="menu-shortcut">Ctrl+D</span></div>
-    <div class="menu-separator"></div>
-    <div class="menu-item" data-action="zoomin"><span class="material-icons-round">add</span> Zoom In</div>
-    <div class="menu-item" data-action="zoomout"><span class="material-icons-round">remove</span> Zoom Out</div>
-    <div class="menu-item" data-action="zoomreset"><span class="material-icons-round">refresh</span> Reset Zoom<span class="menu-shortcut">Ctrl+0</span></div>
-    <div class="menu-separator"></div>
-    <div class="menu-item" data-action="free"><span class="material-icons-round">redeem</span> Free Resources Hub<span class="menu-shortcut">Ctrl+Shift+F</span></div>
-    <div class="menu-item" data-action="usage"><span class="material-icons-round">timeline</span> Usage Stats</div>
-    <div class="menu-item" data-action="passwords"><span class="material-icons-round">lock</span> Password Manager</div>
-    <div class="menu-item" data-action="reader"><span class="material-icons-round">article</span> Reader Mode</div>
-    <div class="menu-item" data-action="print"><span class="material-icons-round">print</span> Print...<span class="menu-shortcut">Ctrl+P</span></div>
-    <div class="menu-separator"></div>
-    <div class="menu-item" data-action="settings"><span class="material-icons-round">settings</span> Settings</div>
-  </div>
-
-  <!-- Collapsible Left Sidebar Rail (48px wide) -->
-  <div id="sidebar-rail">
-    <button id="sb-btn-bookmarks" class="sb-rail-btn" title="Bookmarks (Ctrl+D)"><span class="material-icons-round">bookmark</span></button>
-    <button id="sb-btn-history" class="sb-rail-btn" title="History (Ctrl+H)"><span class="material-icons-round">history</span></button>
-    <button id="sb-btn-downloads" class="sb-rail-btn" title="Downloads (Ctrl+J)"><span class="material-icons-round">download</span></button>
-    <button id="sb-btn-notes" class="sb-rail-btn" title="Quick Notes"><span class="material-icons-round">edit_note</span></button>
-    <button id="sb-btn-ai" class="sb-rail-btn" title="AI Quick Chat (Claude)"><span class="material-icons-round">smart_toy</span></button>
-  </div>
-
-  <!-- Sliding 240px Sidebar Content Panel -->
-  <div id="sidebar-panel" class="sidebar-panel collapsed">
-    <div class="sidebar-header">
-      <div id="sidebar-panel-title" class="panel-header" style="margin:0">Bookmarks</div>
-      <button id="sidebar-close-btn" class="tb-btn" style="width:24px;height:24px" title="Close"><span class="material-icons-round">close</span></button>
-    </div>
-    
-    <!-- View 1: Bookmarks Grid -->
-    <div id="sb-view-bookmarks" class="sidebar-view hidden">
-      <div id="bookmarks-list" class="bm-card-grid"></div>
-    </div>
-
-    <!-- View 2: History List -->
-    <div id="sb-view-history" class="sidebar-view hidden">
-      <ul id="history-list" class="menu-list"></ul>
-    </div>
-
-    <!-- View 3: Downloads List -->
-    <div id="sb-view-downloads" class="sidebar-view hidden">
-      <ul id="downloads-list" class="menu-list"></ul>
-    </div>
-
-    <!-- View 4: Quick Notes -->
-    <div id="sb-view-notes" class="sidebar-view hidden">
-      <textarea id="sb-notes-input" class="sb-notes-textarea" placeholder="Type quick notes here... (auto-saves)" spellcheck="false"></textarea>
-    </div>
-  </div>
-
-  <div id="privacy-panel" class="chrome-menu child-menu hidden" style="width:360px">
-    <div class="panel-header">ᛉ Privacy & Security</div>
-    <div style="padding:12px 16px">
-      <div class="stat-row"><span class="stat-label">Ads blocked this session</span><span id="stat-blocked" class="stat-value">0</span></div>
-      <div class="stat-row"><span class="stat-label">HTTPS upgrades</span><span class="stat-value" style="color:#81c995">On</span></div>
-      <div class="stat-row"><span class="stat-label">Fingerprint protection</span><span class="stat-value" style="color:#81c995">Active</span></div>
-      <div class="stat-row"><span class="stat-label">Block scripts</span><label class="toggle"><input type="checkbox" id="script-toggle"><span class="slider"></span></label></div>
-    </div>
-  </div>
-
-  <div id="reader-panel" class="chrome-menu child-menu hidden" style="width:280px;padding:16px">
-    <div class="panel-header" style="margin:-16px -16px 12px;padding:12px 16px;border-radius:10px 10px 0 0">ᚠ Reader Mode</div>
-    <div style="font-size:12px;color:#9aa0a6;margin-bottom:12px">Simplify the page for reading.</div>
-    <button id="enter-reader-btn" class="chrome-btn">Enter Reader Mode</button>
-  </div>
-
-  <!-- Password Manager -->
-  <div id="pm-overlay" class="pm-overlay hidden">
-    <div class="pm-modal">
-      <div id="pm-unlock" class="pm-section">
-        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Password Manager</div>
-        <div style="font-size:12px;color:#9aa0a6;margin-bottom:16px">Unlock with your master password</div>
-        <input type="password" id="pm-master-input" class="pm-input" placeholder="Enter master password">
-        <div id="pm-master-error" class="pm-error hidden">Incorrect password</div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button id="pm-unlock-btn" class="chrome-btn">Unlock</button>
-          <button id="pm-setup-btn" class="chrome-btn chrome-btn-secondary">Set Master Password</button>
+    <div id="loading-bar"></div>
+    <div id="tab-strip"></div>
+    <div id="toolbar">
+        <div class="nav-btn-group">
+            <div class="nav-circle-btn" id="btn-back"><span class="material-icons-round">arrow_back</span></div>
+            <div class="nav-circle-btn" id="btn-fwd"><span class="material-icons-round">arrow_forward</span></div>
+            <div class="nav-circle-btn" id="btn-reload"><span class="material-icons-round">refresh</span></div>
         </div>
-      </div>
-      <div id="pm-vault" class="pm-section hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div><span style="font-size:15px;font-weight:600">Password Manager</span><span id="pm-count" style="font-size:11px;color:#9aa0a6;margin-left:6px"></span></div>
-          <button id="pm-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
-        </div>
-        <div id="pm-search-section" style="margin-bottom:10px">
-          <input type="text" id="pm-search" class="pm-input" placeholder="Search saved passwords...">
-        </div>
-        <div id="pm-list" class="pm-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Password save notification -->
-  <div id="pm-notification" class="pm-notification hidden">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:12px;color:#9aa0a6">Save password for <span id="pm-notif-domain"></span>?</div>
-      <div id="pm-notif-details" style="font-size:11px;color:#e8eaed;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-    </div>
-    <button id="pm-notif-save" class="chrome-btn" style="width:auto;padding:4px 10px;font-size:11px;margin-left:8px">Save</button>
-    <button id="pm-notif-never" class="chrome-btn chrome-btn-secondary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:4px">Never</button>
-  </div>
-
-  <!-- Browser container -->
-  <div id="browser-container">
-  </div>
-
-  <!-- Find bar -->
-  <div id="find-bar" class="find-bar hidden">
-    <input type="text" id="find-input" placeholder="Find in page..." autocomplete="off">
-    <span id="find-count" class="find-count"></span>
-    <button id="find-prev" class="find-btn" title="Previous"><span class="material-icons-round">keyboard_arrow_up</span></button>
-    <button id="find-next" class="find-btn" title="Next"><span class="material-icons-round">keyboard_arrow_down</span></button>
-    <button id="find-close" class="find-btn" title="Close"><span class="material-icons-round">close</span></button>
-  </div>
-
-  <!-- URL suggestions -->
-  <div id="url-suggestions" class="url-suggestions hidden"></div>
-
-  <!-- Settings Panel -->
-  <div id="settings-overlay" class="pm-overlay hidden">
-    <div class="pm-modal" style="width:520px;max-height:580px">
-      <div id="settings-panel" class="pm-section" style="padding:16px 20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div style="font-size:15px;font-weight:600">Settings</div>
-          <button id="settings-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
-        </div>
-        <div style="max-height:460px;overflow-y:auto;margin:0 -20px;padding:0 20px">
-          <div class="settings-group">
-            <div class="settings-label">Search Engine</div>
-            <select id="settings-engine" class="settings-select">
-              <option value="Google">Google</option>
-              <option value="DuckDuckGo">DuckDuckGo</option>
-              <option value="Brave">Brave Search</option>
-            </select>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">On Startup</div>
-            <select id="settings-startup" class="settings-select">
-              <option value="home">Open Free Resources Hub</option>
-              <option value="restore">Restore previous session</option>
-              <option value="blank">Open blank page</option>
-            </select>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">Homepage / New Tab</div>
-            <select id="settings-homepage" class="settings-select">
-              <option value="free">Free Resources Hub</option>
-              <option value="blank">Blank Page</option>
-              <option value="custom">Custom URL</option>
-            </select>
-            <input type="text" id="settings-homepage-url" class="pm-input" style="margin-top:6px;display:none" placeholder="https://...">
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">Accent Color</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="color-swatch" data-color="#8ab4f8" style="background:#8ab4f8"></button>
-              <button class="color-swatch" data-color="#81c995" style="background:#81c995"></button>
-              <button class="color-swatch" data-color="#fdd663" style="background:#fdd663"></button>
-              <button class="color-swatch" data-color="#f28b82" style="background:#f28b82"></button>
-              <button class="color-swatch" data-color="#c58af9" style="background:#c58af9"></button>
-              <button class="color-swatch" data-color="#ff8bcb" style="background:#ff8bcb"></button>
+        
+        <div id="url-bar-container">
+            <div id="url-bar">
+                <span class="material-icons-round" id="url-icon">info</span>
+                <input type="text" id="url-input" spellcheck="false" autocomplete="off" placeholder="Search or enter address">
+                <div class="url-right-icons">
+                    <span class="material-icons-round" id="btn-bookmark-star" title="Bookmark">star_border</span>
+                </div>
             </div>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">Toolbar Buttons</div>
-            <label class="settings-checkbox"><input type="checkbox" id="settings-show-free" checked> Free Resources</label>
-            <label class="settings-checkbox"><input type="checkbox" id="settings-show-reader" checked> Reader Mode</label>
-            <label class="settings-checkbox"><input type="checkbox" id="settings-show-shield" checked> Shield (Privacy)</label>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">Privacy Defaults</div>
-            <label class="settings-checkbox"><input type="checkbox" id="settings-block-scripts"> Block scripts by default</label>
-            <label class="settings-checkbox"><input type="checkbox" id="settings-dark-mode" checked> Force dark mode on all sites</label>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label">Custom CSS (injected into every page)</div>
-            <textarea id="settings-custom-css" class="settings-textarea" placeholder="/* Your custom CSS here */" spellcheck="false"></textarea>
-          </div>
-          <button id="settings-save-btn" class="chrome-btn" style="margin-top:8px">Save Settings</button>
+            <div class="url-suggestions" id="url-suggestions"></div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Usage Stats Panel -->
-  <div id="usage-overlay" class="pm-overlay hidden">
-    <div class="pm-modal" style="width:460px;max-height:560px">
-      <div class="pm-section" style="padding:16px 20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:15px;font-weight:600">Browsing Usage</div>
-          <button id="usage-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
+        <div class="nav-btn-group right">
+            <div class="nav-circle-btn" id="btn-pip" title="Picture in Picture"><span class="material-icons-round">picture_in_picture_alt</span></div>
+            <div class="nav-circle-btn" id="btn-shield" title="Privacy"><span class="material-icons-round">shield</span></div>
+            <div class="nav-circle-btn" id="btn-menu" title="Menu"><span class="material-icons-round">more_vert</span></div>
         </div>
-        <div id="usage-summary" style="margin-bottom:12px">
-          <div style="display:flex;gap:16px;justify-content:center">
-            <div class="usage-stat"><div class="usage-stat-val" id="usage-today">0m</div><div class="usage-stat-lbl">Today</div></div>
-            <div class="usage-stat"><div class="usage-stat-val" id="usage-session">0m</div><div class="usage-stat-lbl">This Session</div></div>
-            <div class="usage-stat"><div class="usage-stat-val" id="usage-top">-</div><div class="usage-stat-lbl">Top Site</div></div>
-          </div>
+    </div>
+
+    <!-- Main Container -->
+    <div id="main-area">
+        <!-- Sidebar Rail -->
+        <div id="sidebar-rail">
+            <div class="rail-btn" data-panel="bookmarks" title="Bookmarks"><span class="material-icons-round">bookmarks</span></div>
+            <div class="rail-btn" data-panel="history" title="History"><span class="material-icons-round">history</span></div>
+            <div class="rail-btn" data-panel="downloads" title="Downloads"><span class="material-icons-round">download</span></div>
+            <div class="rail-btn" data-panel="notes" title="Notes"><span class="material-icons-round">edit_note</span></div>
+            <div style="flex:1"></div>
+            <div class="rail-btn" id="btn-ai" title="AI Assistant"><span class="material-icons-round">auto_awesome</span></div>
         </div>
-        <input type="text" id="usage-search" class="pm-input" placeholder="Search sites..." style="margin-bottom:8px">
-        <div id="usage-list" class="pm-list"></div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Tab Search Overlay (Ctrl+Shift+A) -->
-  <div id="tab-search-overlay" class="pm-overlay hidden">
-    <div class="tab-search-modal">
-      <div class="tab-search-header">
-        <span class="material-icons-round search-icon">search</span>
-        <input type="text" id="tab-search-input" placeholder="Search open tabs..." autocomplete="off">
-        <span class="search-shortcut">Esc</span>
-      </div>
-      <div id="tab-search-list" class="tab-search-list"></div>
-    </div>
-  </div>
+        <!-- Sidebar Panel -->
+        <div id="sidebar-panel" class="glass-panel">
+            <div class="sb-header">
+                <h3 id="sb-title">Panel</h3>
+                <span class="material-icons-round sb-close" id="btn-sb-close">close</span>
+            </div>
+            <div id="sb-content"></div>
+        </div>
 
-  <!-- Toast Notification -->
-  <div id="toast-notif" class="toast-notif hidden"></div>
+        <!-- Browser Views Container -->
+        <div id="browser-container"></div>
+        
+        <!-- Media HUD -->
+        <div class="media-hud" id="media-hud">
+            <span class="material-icons-round" id="mh-play">play_arrow</span>
+            <span class="material-icons-round" id="mh-mute">volume_up</span>
+            <span class="mh-title" id="mh-title">Playing Audio</span>
+        </div>
 
-  <!-- Media Session HUD (Height 32px) -->
-  <div id="media-hud" class="media-hud hidden">
-    <div class="hud-left">
-      <img id="hud-favicon" class="hud-favicon" src="" alt="" onerror="this.style.display='none'">
-      <span id="hud-title" class="hud-title">Playing Audio...</span>
+        <!-- Status Bar -->
+        <div id="status-bar">
+            <div class="sb-left"><span class="ipc-badge">IPC ACTIVE</span></div>
+            <div class="sb-center" id="sb-zoom">100%</div>
+            <div class="sb-right" id="sb-loading-url"></div>
+        </div>
     </div>
-    <div class="hud-controls">
-      <button id="hud-play-btn" class="hud-btn" title="Pause / Play"><span class="material-icons-round">pause</span></button>
-      <button id="hud-mute-btn" class="hud-btn" title="Mute / Unmute"><span class="material-icons-round">volume_up</span></button>
-    </div>
-  </div>
 
-  <!-- Bottom Status Bar -->
-  <div id="status-bar">
-    <div id="status-left">
-      <span id="ipc-status-badge" class="ipc-status-badge" title="IPC Message Bus & C++ Engine Connected">ᚲ IPC ACTIVE</span>
+    <!-- Menus & Modals -->
+    <div class="chrome-menu glass-panel" id="main-menu">
+        <div class="menu-item" id="mi-newtab"><span class="material-icons-round">add</span>New Tab</div>
+        <div class="menu-item" id="mi-history"><span class="material-icons-round">history</span>History</div>
+        <div class="menu-item" id="mi-downloads"><span class="material-icons-round">download</span>Downloads</div>
+        <div class="menu-item" id="mi-bookmarks"><span class="material-icons-round">bookmarks</span>Bookmarks</div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="mi-passwords"><span class="material-icons-round">password</span>Passwords</div>
+        <div class="menu-item" id="mi-settings"><span class="material-icons-round">settings</span>Settings</div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="mi-free"><span class="material-icons-round">memory</span>Free Resources</div>
+        <div class="menu-item" id="mi-reader"><span class="material-icons-round">menu_book</span>Reader Mode</div>
+        <div class="menu-item" id="mi-usage"><span class="material-icons-round">analytics</span>Usage Stats</div>
+        <div class="menu-item" id="mi-print"><span class="material-icons-round">print</span>Print</div>
     </div>
-    <div id="status-center">
-      <span id="status-zoom">Zoom: 100%</span>
-    </div>
-    <div id="status-right">
-      <span id="status-loading-url" class="status-url-text hidden"></span>
-    </div>
-  </div>
 
-  <script src="renderer.js"></script>
+    <!-- Tab Context Menu -->
+    <div id="tab-context-menu" class="glass-panel">
+        <div class="menu-item" id="tcm-pin">Pin Tab</div>
+        <div class="menu-item" id="tcm-dup">Duplicate Tab</div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="tcm-close">Close Tab</div>
+        <div class="menu-item" id="tcm-close-other">Close Other Tabs</div>
+    </div>
+
+    <!-- Tab Search Modal -->
+    <div class="pm-overlay" id="ts-modal" style="display:none">
+        <div class="tab-search-modal glass-panel">
+            <input type="text" id="ts-input" placeholder="Search tabs...">
+            <div id="ts-results"></div>
+        </div>
+    </div>
+
+    <div class="tab-tooltip" id="tab-tooltip"></div>
+    <div class="toast-notif" id="toast-notif"></div>
+
+    <script src="renderer.js"></script>
 </body>
 </html>
