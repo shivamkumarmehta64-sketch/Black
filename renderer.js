@@ -1223,16 +1223,8 @@ starBtn.addEventListener('click', () => {
   }
 });
 
-// --- DOWNLOADS ---
-function toggleDownloads() {
-  downloadsMenu.classList.toggle('hidden');
-  closeAllMenus();
-  bookmarksMenu.classList.add('hidden');
-  historyMenu.classList.add('hidden');
-  privacyPanel.classList.add('hidden');
-  readerPanel.classList.add('hidden');
-}
 
+// --- DOWNLOADS ---
 function createOrUpdateDownload(filename, progress = 0, state = 'progressing') {
   let li = document.getElementById('dl-' + filename);
   if (!li) {
@@ -1375,12 +1367,14 @@ if (freeBtn) {
   });
 }
 
-readerBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  closeAllMenus();
-  privacyPanel.classList.add('hidden');
-  readerPanel.classList.toggle('hidden');
-});
+if (readerBtn) {
+  readerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllMenus();
+    privacyPanel.classList.add('hidden');
+    readerPanel.classList.toggle('hidden');
+  });
+}
 
 const profileBtn = document.getElementById('profile-btn');
 if (profileBtn) {

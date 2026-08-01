@@ -34,6 +34,15 @@ ipcMain.handle('set-fullscreen', (_e, fs) => {
   if (win) win.setFullScreen(fs);
 });
 
+// Open external URLs safely in the system default browser
+ipcMain.handle('open-external', (_e, url) => {
+  if (typeof url !== 'string') return false;
+  if (!url.startsWith('https://') && !url.startsWith('http://')) return false;
+  const { shell } = require('electron');
+  shell.openExternal(url).catch(() => {});
+  return true;
+});
+
 function setupContextMenu() {
   app.whenReady().then(async () => {
     try {
@@ -480,10 +489,16 @@ app.whenReady().then(() => {
     callback({});
   });
 
-  // Anti-fingerprinting
+  // Anti-fingerprinting + selective permission handler
   session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    const url = wc.getURL();
+    // Allow geolocation for black-ui newtab weather widget
+    if (permission === 'geolocation' && url.startsWith('black-ui://')) {
+      callback(true);
+      return;
+    }
     const blocked = ['media', 'geolocation', 'notifications', 'midi', 'keyboardLock', 'pointerLock'];
-    callback(blocked.includes(permission) ? false : true);
+    callback(!blocked.includes(permission));
   });
 
   // Cache dark mode setting

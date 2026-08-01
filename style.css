@@ -365,54 +365,34 @@ webview,
   align-items: center;
 }
 
-@keyframes tabEnter {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 
-.tab::before {
-  content: '';
-  position: absolute;
-  bottom: 0; left: -8px; right: -8px;
-  height: 1px;
-  background: var(--bg);
-  display: none;
-}
-
-.tab.active::before {
-  display: block;
-  z-index: 2;
+/* ── Active Tab: full-width 3px energy-line, expands 0→100% ── */
+.tab.active {
+  background: rgba(8, 16, 30, 0.95);
+  color: #f0f9ff;
+  z-index: 3;
+  border-color: rgba(0, 240, 255, 0.28);
+  /* filter is GPU composited — cheaper than multi-layer box-shadow */
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.18));
 }
 
 .tab.active::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 12px; right: 12px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 0 0 2px 2px;
-  z-index: 4;
-  box-shadow: 0 0 6px var(--accent);
+  width: 100%;
+  /* GPU composited glow instead of box-shadow blur > 20px */
+  filter: drop-shadow(0 0 6px #00f0ff);
+  animation: energyLinePulse 2.8s ease-in-out infinite alternate;
 }
+
+@keyframes energyLinePulse {
+  0%   { filter: drop-shadow(0 0 4px #00f0ff);  opacity: 0.85; }
+  100% { filter: drop-shadow(0 0 10px #00f0ff); opacity: 1; }
+}
+
+/* Active tab title bright */
+.tab.active .tab-title { color: #f0f9ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.4); }
 
 .tab:hover { background: var(--tab-hover-bg); color: var(--text); }
-
 .tab:hover .tab-title { color: var(--text); }
-
-.tab.active {
-  background: var(--tab-active-bg);
-  color: var(--text);
-  z-index: 3;
-  box-shadow: 0 -1px 3px rgba(0,0,0,0.15);
-}
-
-.tab.active .tab-title { color: var(--text); }
-
-.tab-title {
-  flex: 1; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; margin-right: 4px;
-  font-size: 12px; font-weight: 500; line-height: 28px;
-}
 
 .tab-close {
   background: none; border: none; color: transparent;
@@ -637,7 +617,7 @@ webview,
    GLASSMORPHISM SYSTEM — Menus, Panels, Sidebars
    ═══════════════════════════════════════════════════ */
 
-/* Shared glass surface token */
+/* Shared glass surface tokens — consolidated here, not in :root to avoid duplication */
 :root {
   --glass-bg:      rgba(7, 13, 24, 0.85);
   --glass-border:  rgba(0, 240, 255, 0.15);
@@ -1769,7 +1749,3 @@ webview { display: flex; flex: 1; width: 100%; height: 100%; border: none; }
   border-color: var(--accent);
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
-
-
-
-
