@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
   --bg: #02050b;
   --bg-surface: #070d18;
@@ -27,14 +29,16 @@
   --radius-xl: 14px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --font: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-  --font-runic: 'Cinzel', 'Times New Roman', serif;
+  --font-inter: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  --font-cinzel: 'Cinzel', 'Times New Roman', serif;
+  --font: var(--font-inter);
+  --font-runic: var(--font-cinzel);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: var(--font);
+  font-family: var(--font-inter);
   background: var(--bg);
   color: var(--text);
   display: flex; flex-direction: column; height: 100vh; overflow: hidden;
@@ -43,6 +47,45 @@ body {
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.05) 0%, transparent 60%),
     radial-gradient(circle at 100% 100%, rgba(2, 132, 199, 0.04) 0%, transparent 50%);
+}
+
+/* --- Font System Rules --- */
+/* Cinzel for Headings, Titles, Tab Strip, Omnibox Label, & Panel Headers */
+.tab-title,
+.runic-emblem,
+.runic-prefix,
+.ipc-status-badge,
+.runic-title,
+.settings-label,
+.panel-title,
+.child-menu-title,
+.pm-title,
+.stat-label,
+.rp-title,
+.rp-cat-title,
+.modal-title,
+.settings-header,
+.menu-header,
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-cinzel) !important;
+  letter-spacing: 0.05em !important;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3) !important;
+}
+
+/* Inter for URL Input, Dropdowns, Body & General UI */
+#url-input,
+.address-bar,
+.chrome-menu,
+.menu-item,
+.menu-list,
+.menu-list li,
+.pm-input,
+.pm-list,
+.settings-select,
+.settings-textarea,
+.find-bar input,
+input, select, textarea, button {
+  font-family: var(--font-inter);
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -117,11 +160,12 @@ body {
 }
 
 .runic-emblem {
-  font-family: var(--font-runic);
+  font-family: var(--font-cinzel);
   font-size: 16px;
   font-weight: 900;
   color: var(--accent);
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 0 0 20px rgba(0, 240, 255, 0.4);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6), 0 0 16px rgba(0, 240, 255, 0.3);
   padding: 0 8px;
   align-self: center;
   user-select: none;
@@ -154,6 +198,42 @@ body {
   transition: all 0.15s var(--ease);
   flex-shrink: 0;
   animation: tabEnter 0.2s var(--ease);
+}
+
+.tab-title {
+  font-family: var(--font-cinzel);
+  flex: 1; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; margin-right: 4px;
+  font-size: 11px; font-weight: 600; line-height: 30px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+.runic-prefix {
+  color: var(--accent);
+  font-size: 14px;
+  font-family: var(--font-cinzel);
+  letter-spacing: 0.05em;
+  margin-right: 6px;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+  user-select: none;
+}
+
+.ipc-status-badge {
+  font-family: var(--font-cinzel);
+  font-size: 10px;
+  font-weight: 700;
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
 }
 
 @keyframes tabEnter {
