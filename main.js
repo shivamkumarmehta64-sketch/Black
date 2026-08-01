@@ -38,6 +38,11 @@ function setupContextMenu() {
 
 setupContextMenu();
 
+// Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'black-ui', privileges: { standard: true, secure: true, allowServiceWorkers: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
+]);
+
 // ── GPU & Rendering Performance Flags ──────────────────────────────────────
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'disable_non_proxied_udp');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
@@ -93,6 +98,17 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Custom protocol for internal browser pages (black-ui://newtab)
+  protocol.registerFileProtocol('black-ui', (request, callback) => {
+    let urlPath = request.url.replace(/^black-ui:\/\//, '');
+    urlPath = urlPath.split('?')[0].split('#')[0];
+    if (!urlPath || urlPath === 'newtab' || urlPath === 'newtab/' || urlPath === 'newtab.html') {
+      callback({ path: path.join(__dirname, 'newtab.html') });
+    } else {
+      callback({ path: path.join(__dirname, urlPath) });
+    }
+  });
+
   // YouTube ad URL blocking
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: [

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab — Black Browser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg: #02050b;
+      --accent: #00f0ff;
+      --accent-glow: 0 0 12px rgba(0, 240, 255, 0.6);
+      --font-cinzel: 'Cinzel', 'Times New Roman', serif;
+      --font-inter: 'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: #f0f9ff;
+      font-family: var(--font-inter);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 40px 20px 20px;
+      position: relative;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(2, 132, 199, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 15% 75%, rgba(0, 240, 255, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Floating Runic Particles System */
+    .runic-particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      font-family: var(--font-cinzel);
+      color: rgba(0, 240, 255, 0.22);
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+      will-change: transform, opacity;
+      animation: runicEmberDrift 14s linear infinite;
+      user-select: none;
+    }
+
+    @keyframes runicEmberDrift {
+      0% {
+        transform: translateY(105vh) scale(0.8) rotate(0deg);
+        opacity: 0;
+      }
+      20% { opacity: 0.6; }
+      80% { opacity: 0.5; }
+      100% {
+        transform: translateY(-10vh) scale(1.1) rotate(45deg);
+        opacity: 0;
+      }
+    }
+
+    .main-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 960px;
+      margin: auto 0;
+    }
+
+    /* Live Digital Clock */
+    .clock-container {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .digital-clock {
+      font-family: var(--font-cinzel);
+      font-size: 76px;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 16px rgba(0, 240, 255, 0.6), 0 0 32px rgba(0, 240, 255, 0.3);
+      line-height: 1;
+    }
+
+    .dynamic-greeting {
+      font-family: var(--font-cinzel);
+      font-size: 20px;
+      font-weight: 600;
+      color: #7dd3fc;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+      margin-top: 12px;
+      margin-bottom: 32px;
+    }
+
+    /* Pill-shaped Search Bar */
+    .search-box {
+      width: 100%;
+      max-width: 620px;
+      height: 52px;
+      background: rgba(7, 13, 24, 0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 26px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 20px rgba(0, 240, 255, 0.08) inset;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-bottom: 40px;
+    }
+
+    .search-box:focus-within, .search-box:hover {
+      border-color: var(--accent);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.9), 0 0 24px rgba(0, 240, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .search-rune {
+      font-family: var(--font-cinzel);
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent);
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+      margin-right: 12px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f0f9ff;
+      font-family: var(--font-inter);
+      font-size: 15px;
+    }
+
+    .search-input::placeholder {
+      color: #0284c7;
+      opacity: 0.8;
+    }
+
+    .engine-select-btn {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .engine-select-btn:hover {
+      background: rgba(0, 240, 255, 0.2);
+    }
+
+    /* Speed Dial Grid (4-columns) */
+    .speed-dial-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    .sd-card {
+      background: rgba(7, 13, 24, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 240, 255, 0.12);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      color: #f0f9ff;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sd-card:hover {
+      background: rgba(0, 240, 255, 0.08);
+      border-color: rgba(0, 240, 255, 0.4);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 16px rgba(0, 240, 255, 0.25);
+      transform: translateY(-3px);
+    }
+
+    .sd-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(0, 240, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 240, 255, 0.15);
+    }
+
+    .sd-icon-wrapper img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .sd-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #e0f2fe;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Quick Links Pill Row */
+    .quick-links-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      max-width: 720px;
+    }
+
+    .ql-pill {
+      background: rgba(7, 13, 24, 0.6);
+      border: 1px solid rgba(0, 240, 255, 0.12);
+      border-radius: 18px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #7dd3fc;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .ql-pill:hover {
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Bottom Bar */
+    .bottom-bar {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid rgba(0, 240, 255, 0.1);
+      font-size: 12px;
+      color: #0284c7;
+    }
+
+    .bottom-bar span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-title {
+      font-family: var(--font-cinzel);
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Runic Particles -->
+  <div class="runic-particles" id="particles-container"></div>
+
+  <!-- Main Start Page Content -->
+  <div class="main-container">
+    
+    <!-- Clock & Greeting -->
+    <div class="clock-container">
+      <div class="digital-clock" id="clock">00:00:00</div>
+      <div class="dynamic-greeting" id="greeting">Welcome to the Abyss</div>
+    </div>
+
+    <!-- Pill Search Bar -->
+    <form class="search-box" id="search-form">
+      <span class="search-rune">ᚠ</span>
+      <input type="text" id="search-input" class="search-input" placeholder="Search the Abyss or enter URL..." autofocus autocomplete="off">
+      <button type="button" id="engine-btn" class="engine-select-btn">
+        <span id="engine-name">Google</span>
+        <span class="material-icons-round" style="font-size:14px">expand_more</span>
+      </button>
+    </form>
+
+    <!-- Speed Dials (4-Column Grid) -->
+    <div class="speed-dial-grid" id="speed-dials"></div>
+
+    <!-- Quick Links Horizontal Row -->
+    <div class="quick-links-row" id="quick-links"></div>
+
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <div class="bottom-bar">
+    <span id="date-display">Saturday, Aug 1</span>
+    <span id="stats-display">Tabs: 1 | Session: Active</span>
+    <span class="brand-title">ᚲ Black Browser v1.0.0</span>
+  </div>
+
+  <script>
+    // --- LIVE CLOCK & GREETING ---
+    function updateClock() {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = `${hrs}:${mins}:${secs}`;
+
+      // Greeting logic
+      const hour = now.getHours();
+      let greetText = "Good Evening, Phantom";
+      if (hour < 12) greetText = "Good Morning, Sovereign";
+      else if (hour < 18) greetText = "Good Afternoon, Wanderer";
+      document.getElementById('greeting').textContent = greetText;
+
+      // Date Display
+      const options = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      document.getElementById('date-display').textContent = now.toLocaleDateString('en-US', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- SEARCH ENGINES ---
+    let currentEngineIndex = 0;
+    const engines = [
+      { name: 'Google', url: 'https://www.google.com/search?q=' },
+      { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
+      { name: 'Bing', url: 'https://www.bing.com/search?q=' },
+      { name: 'Brave', url: 'https://search.brave.com/search?q=' }
+    ];
+
+    document.getElementById('engine-btn').onclick = () => {
+      currentEngineIndex = (currentEngineIndex + 1) % engines.length;
+      document.getElementById('engine-name').textContent = engines[currentEngineIndex].name;
+    };
+
+    document.getElementById('search-form').onsubmit = (e) => {
+      e.preventDefault();
+      let q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+      if (q.startsWith('http://') || q.startsWith('https://')) {
+        location.href = q;
+      } else if (q.includes('.') && !q.includes(' ')) {
+        location.href = 'https://' + q;
+      } else {
+        location.href = engines[currentEngineIndex].url + encodeURIComponent(q);
+      }
+    };
+
+    // --- SPEED DIALS (4 Columns) ---
+    const SPEED_DIALS = [
+      { name: 'Google', url: 'https://www.google.com', domain: 'google.com' },
+      { name: 'YouTube', url: 'https://www.youtube.com', domain: 'youtube.com' },
+      { name: 'GitHub', url: 'https://github.com', domain: 'github.com' },
+      { name: 'Reddit', url: 'https://www.reddit.com', domain: 'reddit.com' },
+      { name: 'DuckDuckGo', url: 'https://duckduckgo.com', domain: 'duckduckgo.com' },
+      { name: 'ChatGPT', url: 'https://chatgpt.com', domain: 'chatgpt.com' },
+      { name: 'Amazon', url: 'https://www.amazon.com', domain: 'amazon.com' },
+      { name: 'Wikipedia', url: 'https://www.wikipedia.org', domain: 'wikipedia.org' }
+    ];
+
+    const sdContainer = document.getElementById('speed-dials');
+    sdContainer.innerHTML = SPEED_DIALS.map(sd => `
+      <a class="sd-card" href="${sd.url}">
+        <div class="sd-icon-wrapper">
+          <img src="https://${sd.domain}/favicon.ico" alt="" onerror="this.parentNode.textContent='${sd.name.charAt(0)}'">
+        </div>
+        <div class="sd-label">${sd.name}</div>
+      </a>
+    `).join('');
+
+    // --- QUICK LINKS PILLS ---
+    const QUICK_LINKS = [
+      { name: 'FMHY', url: 'https://fmhy.net' },
+      { name: 'AlternativeTo', url: 'https://alternativeto.net' },
+      { name: 'Open Library', url: 'https://openlibrary.org' },
+      { name: 'Proton VPN', url: 'https://protonvpn.com' },
+      { name: 'Project Gutenberg', url: 'https://www.gutenberg.org' },
+      { name: 'Archive.org', url: 'https://archive.org' }
+    ];
+
+    document.getElementById('quick-links').innerHTML = QUICK_LINKS.map(ql => `
+      <a class="ql-pill" href="${ql.url}">${ql.name}</a>
+    `).join('');
+
+    // --- RUNIC PARTICLES ---
+    const runes = ['ᛉ', 'ᚠ', 'ᚲ', 'ᛟ', 'ᚱ'];
+    const pContainer = document.getElementById('particles-container');
+    for (let i = 0; i < 12; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.textContent = runes[Math.floor(Math.random() * runes.length)];
+      p.style.left = Math.random() * 100 + '%';
+      p.style.fontSize = (12 + Math.random() * 14) + 'px';
+      p.style.animationDelay = (Math.random() * 12) + 's';
+      p.style.animationDuration = (10 + Math.random() * 8) + 's';
+      pContainer.appendChild(p);
+    }
+  </script>
+</body>
+</html>

@@ -47,203 +47,9 @@ let blockedCount = 0;
 let searchEngine = 'Google';
 let lastClosedTab = null;
 
-const FREE_RESOURCES = {
-  '🎬 Streaming & Movies': [
-    { url: 'https://fmhy.net', title: 'FMHY — Free Media Hub', desc: 'The biggest free media collection' },
-    { url: 'https://tbcpl.lol', title: 'TBCP — Big Compilation', desc: 'Massive free link directory' },
-    { url: 'https://tubitv.com', title: 'Tubi — Free Movies & TV', desc: 'Legal free streaming with ads' },
-    { url: 'https://pluto.tv', title: 'Pluto TV — Live & On-Demand', desc: 'Hundreds of free channels' },
-    { url: 'https://www.crackle.com', title: 'Crackle — Free Movies', desc: 'Sony-owned free streaming' },
-    { url: 'https://popcornflix.com', title: 'Popcornflix', desc: 'Free movies, no signup' }
-  ],
-  '🎵 Music & Audio': [
-    { url: 'https://fmhy.net/videopiracyguide', title: 'FMHY Music Section', desc: 'Curated free music links' },
-    { url: 'https://freemusicarchive.org', title: 'Free Music Archive', desc: 'Royalty-free music library' },
-    { url: 'https://soundcloud.com', title: 'SoundCloud', desc: 'Free indie music platform' },
-    { url: 'https://bandcamp.com', title: 'Bandcamp', desc: 'Support artists, free streams' },
-    { url: 'https://www.jamendo.com', title: 'Jamendo', desc: 'Free music for everyone' },
-    { url: 'https://music.youtube.com', title: 'YouTube Music Free', desc: 'Free tier with ads' }
-  ],
-  '💻 Software & Apps': [
-    { url: 'https://fmhy.net/adblockvpnguide', title: 'FMHY Adblock & VPN', desc: 'Privacy tools collection' },
-    { url: 'https://alternativeto.net', title: 'AlternativeTo', desc: 'Find free alternatives to paid apps' },
-    { url: 'https://portableapps.com', title: 'PortableApps', desc: 'Portable free software suite' },
-    { url: 'https://ninite.com', title: 'Ninite — Bulk Installer', desc: 'Install multiple free apps at once' },
-    { url: 'https://sourceforge.net', title: 'SourceForge', desc: 'Open-source software hub' },
-    { url: 'https://filepuma.com', title: 'FilePuma — Free Software', desc: 'Freeware & driver updates' }
-  ],
-  '📚 Books & Learning': [
-    { url: 'https://fmhy.net/readingpiracyguide', title: 'FMHY Reading Section', desc: 'Free books & articles' },
-    { url: 'https://openlibrary.org', title: 'Open Library', desc: 'Free ebook lending library' },
-    { url: 'https://www.gutenberg.org', title: 'Project Gutenberg', desc: '70k+ free classic ebooks' },
-    { url: 'https://standardebooks.org', title: 'Standard Ebooks', desc: 'Beautiful free ebooks' },
-    { url: 'https://www.khanacademy.org', title: 'Khan Academy', desc: 'Free world-class education' },
-    { url: 'https://ocw.mit.edu', title: 'MIT OpenCourseWare', desc: 'Free MIT course materials' }
-  ],
-  '🎮 Games': [
-    { url: 'https://fmhy.net/gamingpiracyguide', title: 'FMHY Gaming Section', desc: 'Free games & resources' },
-    { url: 'https://store.steampowered.com', title: 'Steam — Free Games', desc: 'Hundreds of free-to-play titles' },
-    { url: 'https://itch.io', title: 'itch.io — Indie Games', desc: 'Thousands of free indie games' },
-    { url: 'https://www.gog.com', title: 'GOG — Free Games', desc: 'DRM-free, many free titles' },
-    { url: 'https://store.epicgames.com', title: 'Epic Games Store', desc: 'Free games every week' },
-    { url: 'https://gamejolt.com', title: 'Game Jolt', desc: 'Free indie game platform' }
-  ],
-  '🔒 Privacy & VPN': [
-    { url: 'https://fmhy.net/adblockvpnguide', title: 'FMHY Adblock/VPN', desc: 'Best privacy tool list' },
-    { url: 'https://protonvpn.com', title: 'Proton VPN (Free)', desc: 'Unlimited free tier, no logs' },
-    { url: 'https://windscribe.com', title: 'Windscribe (Free)', desc: '10GB/month free VPN' },
-    { url: 'https://1.1.1.1', title: 'Cloudflare WARP', desc: 'Free VPN/proxy by Cloudflare' },
-    { url: 'https://www.torproject.org', title: 'Tor Browser', desc: 'Anonymous browsing' },
-    { url: 'https://ublockorigin.com', title: 'uBlock Origin', desc: 'Best free ad blocker' }
-  ],
-  '🤖 AI & Productivity': [
-    { url: 'https://chatgpt.com', title: 'ChatGPT (Free)', desc: 'Free AI assistant by OpenAI' },
-    { url: 'https://claude.ai', title: 'Claude (Free)', desc: 'Free AI by Anthropic' },
-    { url: 'https://gemini.google.com', title: 'Google Gemini (Free)', desc: 'Free AI by Google' },
-    { url: 'https://huggingface.co', title: 'Hugging Face', desc: 'Free AI models & datasets' },
-    { url: 'https://www.perplexity.ai', title: 'Perplexity AI', desc: 'Free AI search engine' },
-    { url: 'https://excalidraw.com', title: 'Excalidraw', desc: 'Free whiteboard tool' }
-  ],
-  '🌐 Web Tools & More': [
-    { url: 'https://fmhy.net/toolsguide', title: 'FMHY Tools Section', desc: 'Curated free online tools' },
-    { url: 'https://tinytool.space', title: 'tinytool.space', desc: 'Collection of tiny web tools' },
-    { url: 'https://photopea.com', title: 'Photopea — Free Photoshop', desc: 'Free online image editor' },
-    { url: 'https://pixlr.com', title: 'Pixlr — Free Photo Editor', desc: 'Browser-based photo editing' },
-    { url: 'https://www.remove.bg', title: 'Remove.bg (Free)', desc: 'Free background remover' },
-    { url: 'https://archive.org', title: 'Internet Archive', desc: 'Free books, movies, music & more' }
-  ]
-};
-
-function buildResourceSectionHTML(category, links) {
-  return '<div class="rc-category"><div class="rc-cat-title">' + category + '</div><div class="rc-grid">' +
-    links.map(l => '<a class="rc-item" href="' + l.url + '" target="_blank"><div class="rc-name">' + esc(l.title) + '</div><div class="rc-desc">' + esc(l.desc) + '</div></a>').join('') +
-    '</div></div>';
-}
+const NEW_TAB_URL = 'black-ui://newtab';
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// Build resource panel HTML once
-const RESOURCE_PANEL_HTML = (() => {
-  const cats = Object.entries(FREE_RESOURCES).map(([cat, links]) =>
-    '<div class="rp-cat"><div class="rp-cat-title">' + cat + '</div><div class="rp-grid">' +
-    links.map(l => '<a class="rp-item" href="' + esc(l.url) + '"><div class="rp-name">' + esc(l.title) + '</div><div class="rp-desc">' + esc(l.desc) + '</div></a>').join('') +
-    '</div></div>'
-  ).join('');
-  return '<div class="rp-inner"><div class="rp-header"><div class="rp-title">&#127760; All Free Resources</div><button class="rp-close" id="rp-close-btn">&#10005;</button></div>' + cats + '</div>';
-})();
-
-const SPEED_DIALS = [
-  { url: 'https://www.google.com', title: 'Google' },
-  { url: 'https://www.youtube.com', title: 'YouTube' },
-  { url: 'https://github.com', title: 'GitHub' },
-  { url: 'https://www.reddit.com', title: 'Reddit' },
-  { url: 'https://duckduckgo.com', title: 'DuckDuckGo' },
-  { url: 'https://chatgpt.com', title: 'ChatGPT' },
-  { url: 'https://www.amazon.com', title: 'Amazon' },
-  { url: 'https://x.com', title: 'X' },
-  { url: 'https://www.wikipedia.org', title: 'Wikipedia' },
-  { url: 'https://www.twitch.tv', title: 'Twitch' }
-];
-
-const FAVICON = (u) => {
-  try { return new URL(u).origin + '/favicon.ico'; } catch (e) { return ''; }
-};
-
-const SD_HTML = SPEED_DIALS.map(s =>
-  '<a class="sd-item" href="' + s.url + '"><div class="sd-icon"><img src="' + FAVICON(s.url) + '" alt="" onerror="var p=this.parentNode;p.textContent=\'' + s.title.charAt(0) + '\';p.style.fontSize=\'18px\';p.style.fontWeight=\'600\';p.style.color=\'#9aa0a6\'"></div><div class="sd-label">' + s.title + '</div></a>'
-).join('');
-
-const RESOURCE_TOP = [
-  { url: 'https://www.youtube.com', title: 'YouTube' },
-  { url: 'https://github.com', title: 'GitHub' },
-  { url: 'https://www.reddit.com', title: 'Reddit' },
-  { url: 'https://chatgpt.com', title: 'ChatGPT' },
-  { url: 'https://duckduckgo.com', title: 'DuckDuckGo' },
-  { url: 'https://www.wikipedia.org', title: 'Wikipedia' },
-  { url: 'https://archive.org', title: 'Archive' },
-  { url: 'https://news.ycombinator.com', title: 'Hacker News' }
-];
-
-const RS_HTML = RESOURCE_TOP.map(r =>
-  '<a class="rs-item" href="' + r.url + '"><img class="rs-icon" src="' + FAVICON(r.url) + '" alt="" onerror="this.style.display=\'none\'"><span class="rs-name">' + r.title + '</span></a>'
-).join('');
-
-const NEW_TAB_HTML = (function() {
-  var h = new Date().getHours();
-  var greet = h < 12 ? 'Welcome to the Sanctuary' : h < 18 ? 'Enter the Abyss' : 'Shadows Veil the Realm';
-  // DNS prefetch for all speed dial hostnames — reduces lookup latency on click
-  const DNS_PREFETCH = SPEED_DIALS.map(s => {
-    try { return '<link rel="dns-prefetch" href="' + new URL(s.url).origin + '">'; } catch (_) { return ''; }
-  }).join('');
-  return 'data:text/html;charset=utf-8,' + encodeURIComponent(
-'<!DOCTYPE html><html><head><meta charset="utf-8">' + DNS_PREFETCH + '<style>' +
-'*{margin:0;padding:0;box-sizing:border-box}' +
-'body{color:#f0f9ff;font-family:Inter,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#02050b}' +
-'body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 15%,rgba(0,240,255,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 70%,rgba(2,132,199,0.08),transparent),radial-gradient(ellipse 40% 50% at 15% 80%,rgba(0,240,255,0.06),transparent);pointer-events:none;z-index:0}' +
-'.runic-particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}' +
-'.p{position:absolute;font-family:"Cinzel",serif;color:rgba(0,240,255,0.22);text-shadow:0 0 10px rgba(0,240,255,0.4);will-change:transform,opacity;animation:runicEmberDrift 12s linear infinite;user-select:none}' +
-'.p1{left:8%;bottom:-35px;font-size:24px;animation-delay:0s;animation-duration:10s}' +
-'.p2{left:22%;bottom:-35px;font-size:18px;animation-delay:2.5s;animation-duration:13s}' +
-'.p3{left:37%;bottom:-35px;font-size:22px;animation-delay:4.8s;animation-duration:11s}' +
-'.p4{left:52%;bottom:-35px;font-size:20px;animation-delay:1.2s;animation-duration:12.5s}' +
-'.p5{left:68%;bottom:-35px;font-size:26px;animation-delay:5.5s;animation-duration:11.8s}' +
-'.p6{left:82%;bottom:-35px;font-size:19px;animation-delay:3.1s;animation-duration:14s}' +
-'.p7{left:30%;bottom:-35px;font-size:25px;animation-delay:7.2s;animation-duration:13.2s}' +
-'.p8{left:64%;bottom:-35px;font-size:21px;animation-delay:8.6s;animation-duration:10.8s}' +
-'@keyframes runicEmberDrift{' +
-'0%{transform:translateY(0) scale(0.8) rotate(0deg);opacity:0}' +
-'20%{opacity:0.55;transform:translateY(-22vh) scale(1) rotate(12deg)}' +
-'75%{opacity:0.35;transform:translateY(-78vh) scale(1.1) rotate(-14deg)}' +
-'100%{transform:translateY(-106vh) scale(0.7) rotate(28deg);opacity:0}' +
-'}' +
-'.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;min-height:0;position:relative;z-index:1}' +
-'.runic-title{font-family:"Cinzel",serif;font-size:32px;font-weight:900;letter-spacing:4px;color:#00f0ff;text-shadow:0 0 20px rgba(0,240,255,0.8),0 0 40px rgba(0,240,255,0.4);margin-bottom:8px}' +
-'.greet{font-size:14px;color:#7dd3fc;margin-bottom:24px;font-weight:500;letter-spacing:1px;text-transform:uppercase}' +
-'.search{width:100%;max-width:620px;margin-bottom:20px}' +
-'.search input{width:100%;padding:14px 24px;border-radius:28px;border:1px solid rgba(0,240,255,0.3);background:rgba(7,13,24,0.7);color:#f0f9ff;font-size:15px;font-family:inherit;outline:none;backdrop-filter:blur(12px);transition:all 0.25s;box-shadow:0 0 15px rgba(0,240,255,0.1)}' +
-'.search input:focus{background:rgba(13,23,42,0.9);border-color:#00f0ff;box-shadow:0 0 25px rgba(0,240,255,0.4)}' +
-'.search input::placeholder{color:rgba(125,211,252,0.5)}' +
-'.sd{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;max-width:620px;margin-bottom:22px}' +
-'.sd-item{display:flex;flex-direction:column;align-items:center;gap:7px;text-decoration:none;cursor:pointer;width:72px;transition:transform 0.15s}' +
-'.sd-item:hover{transform:translateY(-3px)}' +
-'.sd-icon{width:46px;height:46px;border-radius:12px;background:rgba(7,13,24,0.8);display:flex;align-items:center;justify-content:center;overflow:hidden;backdrop-filter:blur(6px);border:1px solid rgba(0,240,255,0.2);box-shadow:0 0 10px rgba(0,240,255,0.1);transition:all 0.15s}' +
-'.sd-item:hover .sd-icon{background:rgba(13,23,42,0.95);border-color:#00f0ff;box-shadow:0 0 15px rgba(0,240,255,0.3)}' +
-'.sd-icon img{width:22px;height:22px;border-radius:6px}' +
-'.sd-label{font-size:11px;color:#7dd3fc;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-weight:500}' +
-'.rs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:620px;margin-bottom:6px}' +
-'.rs-item{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.2);text-decoration:none;cursor:pointer;font-size:11px;color:#00f0ff;transition:all 0.15s}' +
-'.rs-item:hover{background:rgba(0,240,255,0.15);box-shadow:0 0 12px rgba(0,240,255,0.3);transform:translateY(-1px)}' +
-'.rs-icon{width:16px;height:16px;border-radius:4px}' +
-'.rp-close{background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:18px;padding:4px}' +
-'.rp-close:hover{color:#e8eaed}' +
-'.rp-cat{margin-bottom:12px}' +
-'.rp-cat-title{font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;margin-bottom:4px;padding:0 2px}' +
-'.rp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px}' +
-'.rp-item{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02);text-decoration:none;cursor:pointer;transition:background 0.1s}' +
-'.rp-item:hover{background:rgba(138,180,248,0.06)}' +
-'.rp-name{font-size:11px;color:#8ab4f8;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-'.rp-desc{font-size:10px;color:rgba(255,255,255,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-'.ftr{text-align:center;padding:8px;font-size:10px;color:rgba(0,240,255,0.3);flex-shrink:0;position:relative;z-index:1;font-family:"Cinzel",serif}' +
-'</style></head><body>' +
-'<div class="runic-particles">' +
-'<span class="p p1">&#5849;</span><span class="p p2">&#5808;</span><span class="p p3">&#5810;</span><span class="p p4">&#5823;</span>' +
-'<span class="p p5">&#5809;</span><span class="p p6">&#5849;</span><span class="p p7">&#5808;</span><span class="p p8">&#5823;</span>' +
-'</div>' +
-'<div class="main">' +
-'<div class="runic-title">&#5849; BLACK ARTIFACT &#5849;</div>' +
-'<div class="greet">' + greet + '</div>' +
-'<form class="search" onsubmit="event.preventDefault();var q=document.getElementById(\'q\').value;if(q){location.href=q.startsWith(\'http\')?q:\'https://www.google.com/search?q=\'+encodeURIComponent(q)}">' +
-'<input type="text" id="q" placeholder="&#5808; Enter URL or search the Abyss..." autofocus autocomplete="off">' +
-'</form>' +
-'<div class="sd">' + SD_HTML + '</div>' +
-'<div class="rs">' + RS_HTML + '</div>' +
-'</div>' +
-'<div id="panel">' + RESOURCE_PANEL_HTML + '</div>' +
-'<div class="ftr">&#5849; Black Browser &#8212; Dark Fantasy Engine &#5849;</div>' +
-'<script>document.getElementById("rp-close-btn").onclick=function(){document.getElementById("panel").classList.remove("open")};</script>' +
-'</body></html>'
-  );
-})();
 
 // --- SESSION ---
 async function saveSession() {
@@ -259,7 +65,7 @@ async function loadSession() {
 }
 
 // --- TAB MANAGEMENT ---
-function createTab(url = NEW_TAB_HTML) {
+function createTab(url = NEW_TAB_URL) {
   const tabId = 'tab-' + tabCounter++;
   const tabEl = document.createElement('div');
   tabEl.className = 'tab';
@@ -413,7 +219,7 @@ function closeTab(tabId) {
   const index = tabs.findIndex(t => t.id === tabId);
   if (index === -1) return;
   const tab = tabs[index];
-  const urlForHistory = tab._savedURL || (tab.webview ? tab.webview.getURL() : '') || NEW_TAB_HTML;
+  const urlForHistory = tab._savedURL || (tab.webview ? tab.webview.getURL() : '') || NEW_TAB_URL;
   lastClosedTab = { url: urlForHistory, title: tab.titleEl.innerText };
   tab.el.style.transition = 'opacity 0.15s, transform 0.15s';
   tab.el.style.opacity = '0';
@@ -796,8 +602,8 @@ menuDropdown.addEventListener('click', (e) => {
 function openFreeResources() {
   const tab = tabs.find(t => t.id === activeTabId);
   if (tab) {
-    tab._savedURL = NEW_TAB_HTML;
-    tab.webview.loadURL(NEW_TAB_HTML);
+    tab._savedURL = NEW_TAB_URL;
+    tab.webview.loadURL(NEW_TAB_URL);
     tab.titleEl.innerText = 'Free Resources';
   }
 }
