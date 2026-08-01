@@ -63,20 +63,41 @@
     <div class="menu-item" data-action="settings"><span class="material-icons-round">settings</span> Settings</div>
   </div>
 
-  <!-- Child menus -->
-  <div id="downloads-menu" class="chrome-menu child-menu hidden">
-    <div class="panel-header">⬇ Downloads</div>
-    <ul id="downloads-list" class="menu-list"></ul>
+  <!-- Collapsible Left Sidebar Rail (48px wide) -->
+  <div id="sidebar-rail">
+    <button id="sb-btn-bookmarks" class="sb-rail-btn" title="Bookmarks (Ctrl+D)"><span class="material-icons-round">bookmark</span></button>
+    <button id="sb-btn-history" class="sb-rail-btn" title="History (Ctrl+H)"><span class="material-icons-round">history</span></button>
+    <button id="sb-btn-downloads" class="sb-rail-btn" title="Downloads (Ctrl+J)"><span class="material-icons-round">download</span></button>
+    <button id="sb-btn-notes" class="sb-rail-btn" title="Quick Notes"><span class="material-icons-round">edit_note</span></button>
+    <button id="sb-btn-ai" class="sb-rail-btn" title="AI Quick Chat (Claude)"><span class="material-icons-round">smart_toy</span></button>
   </div>
 
-  <div id="bookmarks-menu" class="chrome-menu child-menu hidden">
-    <div class="panel-header">★ Bookmarks</div>
-    <ul id="bookmarks-list" class="menu-list"></ul>
-  </div>
+  <!-- Sliding 240px Sidebar Content Panel -->
+  <div id="sidebar-panel" class="sidebar-panel collapsed">
+    <div class="sidebar-header">
+      <div id="sidebar-panel-title" class="panel-header" style="margin:0">Bookmarks</div>
+      <button id="sidebar-close-btn" class="tb-btn" style="width:24px;height:24px" title="Close"><span class="material-icons-round">close</span></button>
+    </div>
+    
+    <!-- View 1: Bookmarks Grid -->
+    <div id="sb-view-bookmarks" class="sidebar-view hidden">
+      <div id="bookmarks-list" class="bm-card-grid"></div>
+    </div>
 
-  <div id="history-menu" class="chrome-menu child-menu hidden">
-    <div class="panel-header">⧗ History</div>
-    <ul id="history-list" class="menu-list"></ul>
+    <!-- View 2: History List -->
+    <div id="sb-view-history" class="sidebar-view hidden">
+      <ul id="history-list" class="menu-list"></ul>
+    </div>
+
+    <!-- View 3: Downloads List -->
+    <div id="sb-view-downloads" class="sidebar-view hidden">
+      <ul id="downloads-list" class="menu-list"></ul>
+    </div>
+
+    <!-- View 4: Quick Notes -->
+    <div id="sb-view-notes" class="sidebar-view hidden">
+      <textarea id="sb-notes-input" class="sb-notes-textarea" placeholder="Type quick notes here... (auto-saves)" spellcheck="false"></textarea>
+    </div>
   </div>
 
   <div id="privacy-panel" class="chrome-menu child-menu hidden" style="width:360px">

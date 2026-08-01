@@ -1185,14 +1185,26 @@ function saveBookmarks() { window.api.saveBookmarks(savedBookmarks); }
 function renderBookmarks() {
   bookmarksList.innerHTML = '';
   if (savedBookmarks.length === 0) {
-    bookmarksList.innerHTML = '<div class="empty-state"><span class="material-icons-round">star</span>No bookmarks yet<br><span style="font-size:11px;color:#5f6368">Press Ctrl+D to bookmark this page</span></div>';
+    bookmarksList.innerHTML = '<div class="empty-state"><span class="material-icons-round">bookmark_border</span>No bookmarks saved</div>';
     return;
   }
   savedBookmarks.forEach(b => {
-    const li = document.createElement('li');
-    li.textContent = b.title || b.url; li.title = b.url;
-    li.addEventListener('click', () => { const wv = getActiveWebview(); if (wv) wv.loadURL(b.url); bookmarksMenu.classList.add('hidden'); });
-    bookmarksList.appendChild(li);
+    const card = document.createElement('div');
+    card.className = 'bm-card';
+    let fav = '';
+    if (b.url.startsWith('http')) {
+      try { fav = new URL(b.url).origin + '/favicon.ico'; } catch (_) {}
+    }
+    card.innerHTML = `
+      <img class="bm-card-icon" src="${fav}" alt="" onerror="this.style.display='none'">
+      <div class="bm-card-title">${esc(b.title || b.url)}</div>
+    `;
+    card.addEventListener('click', () => {
+      const wv = getActiveWebview();
+      if (wv) wv.loadURL(b.url);
+      closeSidebar();
+    });
+    bookmarksList.appendChild(card);
   });
 }
 starBtn.addEventListener('click', () => {
@@ -1261,23 +1273,85 @@ function addToHistory(url, title) {
   if (savedHistory.length > 200) savedHistory.pop();
   saveHistory(); renderHistory();
 }
-function toggleHistory() {
-  historyMenu.classList.toggle('hidden');
-  closeAllMenus();
-  bookmarksMenu.classList.add('hidden');
-  downloadsMenu.classList.add('hidden');
-  privacyPanel.classList.add('hidden');
-  readerPanel.classList.add('hidden');
+// ═══════════════════════════════════════════════════════════
+//  COLLAPSIBLE LEFT SIDEBAR SYSTEM
+// ═══════════════════════════════════════════════════════════
+const sidebarPanel      = document.getElementById('sidebar-panel');
+const sidebarPanelTitle = document.getElementById('sidebar-panel-title');
+const sidebarCloseBtn   = document.getElementById('sidebar-close-btn');
+const sbNotesInput      = document.getElementById('sb-notes-input');
+
+let activeSidebarView = null;
+
+function openSidebarView(viewName) {
+  if (!sidebarPanel) return;
+
+  if (activeSidebarView === viewName && !sidebarPanel.classList.contains('collapsed')) {
+    closeSidebar();
+    return;
+  }
+
+  activeSidebarView = viewName;
+
+  const titles = {
+    bookmarks: 'Bookmarks',
+    history: 'History',
+    downloads: 'Downloads',
+    notes: 'Quick Notes'
+  };
+  if (sidebarPanelTitle) sidebarPanelTitle.textContent = titles[viewName] || 'Sidebar';
+
+  document.querySelectorAll('.sidebar-view').forEach(el => el.classList.add('hidden'));
+  const viewEl = document.getElementById('sb-view-' + viewName);
+  if (viewEl) viewEl.classList.remove('hidden');
+
+  document.querySelectorAll('.sb-rail-btn').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById('sb-btn-' + viewName);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  sidebarPanel.classList.remove('collapsed');
 }
 
-function toggleBookmarks() {
-  bookmarksMenu.classList.toggle('hidden');
-  closeAllMenus();
-  historyMenu.classList.add('hidden');
-  downloadsMenu.classList.add('hidden');
-  privacyPanel.classList.add('hidden');
-  readerPanel.classList.add('hidden');
+function closeSidebar() {
+  if (sidebarPanel) sidebarPanel.classList.add('collapsed');
+  document.querySelectorAll('.sb-rail-btn').forEach(btn => btn.classList.remove('active'));
+  activeSidebarView = null;
 }
+
+const sbBtnBm = document.getElementById('sb-btn-bookmarks');
+const sbBtnHist = document.getElementById('sb-btn-history');
+const sbBtnDl = document.getElementById('sb-btn-downloads');
+const sbBtnNotes = document.getElementById('sb-btn-notes');
+const sbBtnAi = document.getElementById('sb-btn-ai');
+
+if (sbBtnBm) sbBtnBm.addEventListener('click', () => openSidebarView('bookmarks'));
+if (sbBtnHist) sbBtnHist.addEventListener('click', () => openSidebarView('history'));
+if (sbBtnDl) sbBtnDl.addEventListener('click', () => openSidebarView('downloads'));
+if (sbBtnNotes) sbBtnNotes.addEventListener('click', () => openSidebarView('notes'));
+
+if (sbBtnAi) {
+  sbBtnAi.addEventListener('click', () => {
+    createTab('https://claude.ai');
+  });
+}
+
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+
+// Auto-save Quick Notes with 500ms debounce
+if (sbNotesInput) {
+  sbNotesInput.value = localStorage.getItem('bb-sidebar-notes') || '';
+  let notesTimer = null;
+  sbNotesInput.addEventListener('input', () => {
+    if (notesTimer) clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      localStorage.setItem('bb-sidebar-notes', sbNotesInput.value);
+    }, 500);
+  });
+}
+
+function toggleHistory() { openSidebarView('history'); }
+function toggleBookmarks() { openSidebarView('bookmarks'); }
+function toggleDownloads() { openSidebarView('downloads'); }
 
 // --- CHILD MENU TOGGLES ---
 document.querySelectorAll('[data-action="history"]').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); toggleHistory(); }));
@@ -1292,11 +1366,13 @@ shieldBtn.addEventListener('click', (e) => {
 });
 
 const freeBtn = document.getElementById('free-btn');
-freeBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  closeAllPanels();
-  openFreeResources();
-});
+if (freeBtn) {
+  freeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllPanels();
+    openFreeResources();
+  });
+}
 
 readerBtn.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1306,17 +1382,25 @@ readerBtn.addEventListener('click', (e) => {
 });
 
 const profileBtn = document.getElementById('profile-btn');
-profileBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  closeAllPanels();
-  openFreeResources();
-});
+if (profileBtn) {
+  profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllPanels();
+    openFreeResources();
+  });
+}
 
-// Click outside to close all panels
+// Click outside to close all panels & sidebar
 document.addEventListener('click', (e) => {
   const target = e.target;
-  if (!target.closest('.chrome-menu') && !target.closest('.tb-btn') && !target.closest('#privacy-panel') && !target.closest('#reader-panel')) {
+  if (!target.closest('.chrome-menu') &&
+      !target.closest('.tb-btn') &&
+      !target.closest('#privacy-panel') &&
+      !target.closest('#reader-panel') &&
+      !target.closest('#sidebar-rail') &&
+      !target.closest('#sidebar-panel')) {
     closeAllPanels();
+    closeSidebar();
   }
 });
 
