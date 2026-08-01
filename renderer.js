@@ -54,8 +54,9 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 // --- SESSION ---
 async function saveSession() {
   const data = tabs.map(t => ({
-    url: t._savedURL && t._savedURL !== 'about:blank' ? t._savedURL : t.webview.getURL(),
-    title: t.titleEl.innerText
+    url: t._savedURL && t._savedURL !== 'about:blank' ? t._savedURL : (t.webview ? t.webview.getURL() : ''),
+    title: t.titleEl ? t.titleEl.innerText : '',
+    pinned: !!t.pinned
   }));
   await window.api.saveSession(data);
 }
@@ -64,20 +65,69 @@ async function loadSession() {
   try { return await window.api.loadSession(); } catch (e) { return null; }
 }
 
+// ── TAB DRAG REORDER STATE ──
+let dragSrcTabId = null;
+
+function removeDragClasses() {
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+  });
+}
+
+// ── PIN TAB FUNCTION ──
+function togglePinTab(tab) {
+  if (!tab) return;
+  tab.pinned = !tab.pinned;
+  let pinDot = tab.el.querySelector('.tab-pin-dot');
+
+  if (tab.pinned) {
+    tab.el.classList.add('pinned');
+    if (!pinDot) {
+      pinDot = document.createElement('span');
+      pinDot.className = 'tab-pin-dot';
+      tab.el.appendChild(pinDot);
+    }
+  } else {
+    tab.el.classList.remove('pinned');
+    if (pinDot) pinDot.remove();
+  }
+
+  // Re-sort tabs array & DOM: Pinned tabs stay left-anchored
+  tabs.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  tabs.forEach(t => tabsContainer.appendChild(t.el));
+  saveSession();
+}
+
 // --- TAB MANAGEMENT ---
-function createTab(url = NEW_TAB_URL) {
+function createTab(url = NEW_TAB_URL, isPinned = false) {
   const tabId = 'tab-' + tabCounter++;
   const tabEl = document.createElement('div');
-  tabEl.className = 'tab';
+  tabEl.className = 'tab' + (isPinned ? ' pinned' : '');
   tabEl.id = 'ui-' + tabId;
+  tabEl.setAttribute('draggable', 'true');
+
+  const favIcon = document.createElement('img');
+  favIcon.className = 'tab-fav-icon';
+  favIcon.style.display = 'none';
+
   const titleEl = document.createElement('span');
   titleEl.className = 'tab-title';
   titleEl.innerText = 'New Tab';
+
   const closeBtn = document.createElement('button');
   closeBtn.className = 'tab-close';
   closeBtn.innerHTML = '<span class="material-icons-round">close</span>';
+
+  tabEl.appendChild(favIcon);
   tabEl.appendChild(titleEl);
   tabEl.appendChild(closeBtn);
+
+  if (isPinned) {
+    const pinDot = document.createElement('span');
+    pinDot.className = 'tab-pin-dot';
+    tabEl.appendChild(pinDot);
+  }
+
   tabsContainer.appendChild(tabEl);
 
   const webviewEl = document.createElement('webview');
@@ -93,14 +143,78 @@ function createTab(url = NEW_TAB_URL) {
     el: tabEl,
     webview: webviewEl,
     titleEl,
+    favIcon,
     zoomLevel: 0,
     lastActive: Date.now(),
     pageTitle: '',
+    pinned: isPinned,
     _sleeping: false,
     _savedURL: null,
     _placeholder: null
   };
   tabs.push(tabObj);
+
+  // If pinned, re-sort DOM to ensure left anchoring
+  if (isPinned) {
+    tabs.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    tabs.forEach(t => tabsContainer.appendChild(t.el));
+  }
+
+  // ── HTML5 DRAG AND DROP REORDER LISTENERS ──
+  tabEl.addEventListener('dragstart', (e) => {
+    dragSrcTabId = tabId;
+    tabEl.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tabId);
+  });
+
+  tabEl.addEventListener('dragend', () => {
+    removeDragClasses();
+    dragSrcTabId = null;
+  });
+
+  tabEl.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (dragSrcTabId === tabId) return;
+    const rect = tabEl.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    removeDragClasses();
+    const srcTab = tabs.find(t => t.id === dragSrcTabId);
+    if (srcTab) srcTab.el.classList.add('dragging');
+    if (e.clientX < midX) {
+      tabEl.classList.add('drag-over-left');
+    } else {
+      tabEl.classList.add('drag-over-right');
+    }
+  });
+
+  tabEl.addEventListener('dragleave', () => {
+    tabEl.classList.remove('drag-over-left', 'drag-over-right');
+  });
+
+  tabEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const targetId = tabId;
+    if (!dragSrcTabId || dragSrcTabId === targetId) return;
+    const srcIdx = tabs.findIndex(t => t.id === dragSrcTabId);
+    const targetIdx = tabs.findIndex(t => t.id === targetId);
+    if (srcIdx === -1 || targetIdx === -1) return;
+
+    const rect = tabEl.getBoundingClientRect();
+    const dropAfter = e.clientX > (rect.left + rect.width / 2);
+    let newIdx = dropAfter ? targetIdx + 1 : targetIdx;
+    if (srcIdx < newIdx) newIdx--;
+
+    const [movedTab] = tabs.splice(srcIdx, 1);
+    tabs.splice(newIdx, 0, movedTab);
+
+    // Keep pinned tabs before unpinned
+    tabs.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    tabs.forEach(t => tabsContainer.appendChild(t.el));
+
+    removeDragClasses();
+    saveSession();
+  });
 
   webviewEl.addEventListener('did-start-loading', () => {
     showLoading(webviewEl.getURL());
@@ -344,6 +458,7 @@ document.addEventListener('contextmenu', (e) => {
   menu.className = 'chrome-menu';
   menu.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;min-width:180px;z-index:9999';
   menu.innerHTML = `
+    <div class="menu-item" data-action="tc-pin"><span class="material-icons-round">push_pin</span> ${tabContextTarget.pinned ? 'Unpin tab' : 'Pin tab'}</div>
     <div class="menu-item" data-action="tc-close"><span class="material-icons-round">close</span> Close tab</div>
     <div class="menu-item" data-action="tc-close-others"><span class="material-icons-round">tab</span> Close other tabs</div>
     <div class="menu-item" data-action="tc-close-right"><span class="material-icons-round">tab</span> Close tabs to the right</div>
@@ -356,7 +471,8 @@ document.addEventListener('contextmenu', (e) => {
     const action = ev.target.closest('.menu-item')?.dataset.action;
     if (!action || !tabContextTarget) return;
     const id = tabContextTarget.id;
-    if (action === 'tc-close') closeTab(id);
+    if (action === 'tc-pin') togglePinTab(tabContextTarget);
+    else if (action === 'tc-close') closeTab(id);
     else if (action === 'tc-close-others') {
       [...tabs].forEach(t => { if (t.id !== id) closeTab(t.id); });
     } else if (action === 'tc-close-right') {
@@ -697,6 +813,7 @@ window.addEventListener('keydown', (e) => {
   else if (ctrl && e.key === 'f') { e.preventDefault(); openFindBar(); }
   else if (e.key === 'F3') { e.preventDefault(); if (wv && findInput.value) wv.findInPage(findInput.value, { forward: !e.shiftKey, findNext: true }); }
   else if (ctrl && e.key === 'd') { e.preventDefault(); starBtn.click(); }
+  else if (ctrl && e.shiftKey && (e.key === 'A' || e.key === 'a')) { e.preventDefault(); openTabSearch(); }
   else if (ctrl && e.shiftKey && e.key === 'F') { e.preventDefault(); openFreeResources(); }
   else if (ctrl && e.key === 'h') { e.preventDefault(); toggleHistory(); }
   else if (ctrl && e.key === 'j') { e.preventDefault(); toggleDownloads(); }
@@ -708,7 +825,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === ' ') { e.preventDefault(); if (wv) wv.sendInputEvent({ type: 'keyDown', keyCode: 'PageDown' }); }
   else if (e.key === 'Home') { e.preventDefault(); if (wv) wv.sendInputEvent({ type: 'keyDown', keyCode: 'Home' }); }
   else if (e.key === 'End') { e.preventDefault(); if (wv) wv.sendInputEvent({ type: 'keyDown', keyCode: 'End' }); }
-  else if (e.key === 'Escape') { closeFindBar(); hideSuggestions(); closeAllPanels(); }
+  else if (e.key === 'Escape') { closeFindBar(); hideSuggestions(); closeAllPanels(); closeTabSearch(); }
 });
 
 // --- FIND ---
@@ -719,6 +836,129 @@ function openFindBar() {
 function closeFindBar() {
   findBar.classList.add('hidden');
   if (findRequestId !== null) { const wv = getActiveWebview(); if (wv) wv.stopFindInPage('clearSelection'); findRequestId = null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TAB SEARCH OVERLAY (Ctrl+Shift+A)
+// ═══════════════════════════════════════════════════════════
+const tabSearchOverlay = document.getElementById('tab-search-overlay');
+const tabSearchInput   = document.getElementById('tab-search-input');
+const tabSearchList    = document.getElementById('tab-search-list');
+let tabSearchSelectedIndex = 0;
+
+function openTabSearch() {
+  if (!tabSearchOverlay) return;
+  tabSearchOverlay.classList.remove('hidden');
+  tabSearchInput.value = '';
+  tabSearchSelectedIndex = 0;
+  renderTabSearchList('');
+  setTimeout(() => tabSearchInput.focus(), 50);
+}
+
+function closeTabSearch() {
+  if (tabSearchOverlay) tabSearchOverlay.classList.add('hidden');
+}
+
+function toggleTabSearch() {
+  if (!tabSearchOverlay) return;
+  if (tabSearchOverlay.classList.contains('hidden')) openTabSearch();
+  else closeTabSearch();
+}
+
+function renderTabSearchList(query = '') {
+  if (!tabSearchList) return;
+  tabSearchList.innerHTML = '';
+  const q = query.toLowerCase().trim();
+  const matches = tabs.filter(t => {
+    const title = (t.pageTitle || (t.titleEl ? t.titleEl.innerText : '') || '').toLowerCase();
+    const url = (t._savedURL || (t.webview ? t.webview.getURL() : '')).toLowerCase();
+    return title.includes(q) || url.includes(q);
+  });
+
+  if (matches.length === 0) {
+    tabSearchList.innerHTML = '<div class="empty-state">No matching open tabs</div>';
+    return;
+  }
+
+  if (tabSearchSelectedIndex >= matches.length) tabSearchSelectedIndex = 0;
+
+  matches.forEach((t, idx) => {
+    const item = document.createElement('div');
+    item.className = 'tab-search-item' + (idx === tabSearchSelectedIndex ? ' selected' : '');
+    const url = t._savedURL || (t.webview ? t.webview.getURL() : '');
+    const title = t.pageTitle || (t.titleEl ? t.titleEl.innerText : '') || 'New Tab';
+    const isCur = t.id === activeTabId;
+
+    let iconHtml = '<span class="material-icons-round">language</span>';
+    if (url.startsWith('http')) {
+      try {
+        const favUrl = new URL(url).origin + '/favicon.ico';
+        iconHtml = `<img src="${favUrl}" alt="" onerror="this.outerHTML='<span class=\\'material-icons-round\\'>language</span>'">`;
+      } catch (_) {}
+    } else if (url.startsWith('black-ui:')) {
+      iconHtml = '<span class="material-icons-round" style="color:var(--accent)">auto_awesome</span>';
+    }
+
+    item.innerHTML = `
+      <div class="ts-icon">${iconHtml}</div>
+      <div class="ts-info">
+        <div class="ts-title">${esc(title)}</div>
+        <div class="ts-url">${esc(url)}</div>
+      </div>
+      ${isCur ? '<span class="ts-badge">Active</span>' : ''}
+      ${t.pinned ? '<span class="ts-badge" style="color:#38bdf8">Pinned</span>' : ''}
+    `;
+
+    item.addEventListener('click', () => {
+      if (t._sleeping) wakeTab(t);
+      else switchTab(t.id);
+      closeTabSearch();
+    });
+
+    tabSearchList.appendChild(item);
+  });
+}
+
+if (tabSearchInput) {
+  tabSearchInput.addEventListener('input', () => {
+    tabSearchSelectedIndex = 0;
+    renderTabSearchList(tabSearchInput.value);
+  });
+
+  tabSearchInput.addEventListener('keydown', (e) => {
+    const items = tabSearchList.querySelectorAll('.tab-search-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      tabSearchSelectedIndex = Math.min(items.length - 1, tabSearchSelectedIndex + 1);
+      renderTabSearchList(tabSearchInput.value);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      tabSearchSelectedIndex = Math.max(0, tabSearchSelectedIndex - 1);
+      renderTabSearchList(tabSearchInput.value);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = tabSearchInput.value.toLowerCase().trim();
+      const matches = tabs.filter(t => {
+        const title = (t.pageTitle || (t.titleEl ? t.titleEl.innerText : '') || '').toLowerCase();
+        const url = (t._savedURL || (t.webview ? t.webview.getURL() : '')).toLowerCase();
+        return title.includes(q) || url.includes(q);
+      });
+      const target = matches[tabSearchSelectedIndex];
+      if (target) {
+        if (target._sleeping) wakeTab(target);
+        else switchTab(target.id);
+        closeTabSearch();
+      }
+    } else if (e.key === 'Escape') {
+      closeTabSearch();
+    }
+  });
+}
+
+if (tabSearchOverlay) {
+  tabSearchOverlay.addEventListener('click', (e) => {
+    if (e.target === tabSearchOverlay) closeTabSearch();
+  });
 }
 findInput.addEventListener('input', () => {
   const wv = getActiveWebview(); if (!wv) return;
@@ -1363,14 +1603,14 @@ document.querySelectorAll('[data-action="settings"]').forEach(el => el.addEventL
     if (savedSession && Array.isArray(savedSession) && savedSession.length > 0) {
       // ── LAZY STARTUP: create only the first (last active) tab immediately ──
       // The rest are deferred by 400ms so the main window renders fast
-      createTab(savedSession[0].url);
+      createTab(savedSession[0].url, !!savedSession[0].pinned);
       switchTab(tabs[0].id);
 
       if (savedSession.length > 1) {
         let delay = 400;
         for (let i = 1; i < savedSession.length; i++) {
           const saved = savedSession[i];
-          setTimeout(() => createTab(saved.url), delay);
+          setTimeout(() => createTab(saved.url, !!saved.pinned), delay);
           delay += 200; // stagger each additional tab by 200ms
         }
       }
