@@ -53,6 +53,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 // --- SESSION ---
 async function saveSession() {
+  localStorage.setItem('bb-tab-count', tabs.length);
   const data = tabs.map(t => ({
     url: t._savedURL && t._savedURL !== 'about:blank' ? t._savedURL : (t.webview ? t.webview.getURL() : ''),
     title: t.titleEl ? t.titleEl.innerText : '',

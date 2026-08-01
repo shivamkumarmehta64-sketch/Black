@@ -397,6 +397,15 @@
       }
     };
 
+    // --- DYNAMIC TAB COUNT READOUT ---
+    function updateTabStats() {
+      const count = localStorage.getItem('bb-tab-count') || 1;
+      const statsEl = document.getElementById('stats-display');
+      if (statsEl) statsEl.textContent = `Tabs Open: ${count} | Session: Active`;
+    }
+    updateTabStats();
+    window.addEventListener('storage', updateTabStats);
+
     // --- SPEED DIALS (4 Columns) ---
     const SPEED_DIALS = [
       { name: 'Google', url: 'https://www.google.com', domain: 'google.com' },
@@ -413,7 +422,7 @@
     sdContainer.innerHTML = SPEED_DIALS.map(sd => `
       <a class="sd-card" href="${sd.url}">
         <div class="sd-icon-wrapper">
-          <img loading="lazy" data-src="https://${sd.domain}/favicon.ico" alt="" onerror="this.parentNode.textContent='${sd.name.charAt(0)}'">
+          <img loading="lazy" data-src="https://${sd.domain}/favicon.ico" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-family:var(--font-cinzel);font-size:22px;font-weight:700;color:var(--accent);text-shadow:0 0 8px rgba(0,240,255,0.6)\\'>${sd.name.charAt(0)}</span>'">
         </div>
         <div class="sd-label">${sd.name}</div>
       </a>
