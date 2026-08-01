@@ -3,8 +3,24 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const startTime = Date.now();
 let mainWindow;
 let blockedCount = 0;
+
+// ── WEBVIEW MEMORY: GC on window blur & IPC collector ────────────────────────
+app.on('browser-window-blur', () => {
+  if (typeof global.gc === 'function') {
+    try { global.gc(); } catch (_) {}
+  }
+});
+
+ipcMain.handle('gc-collect', () => {
+  if (typeof global.gc === 'function') {
+    try { global.gc(); return true; } catch (_) {}
+  }
+  return false;
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('toggle-fullscreen', () => {
   const win = BrowserWindow.getFocusedWindow();
@@ -91,7 +107,13 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true
     },
-    backgroundColor: '#202124'
+    backgroundColor: '#202124',
+    show: false
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    console.log('[Black] Window ready in', Date.now() - startTime, 'ms');
   });
 
   mainWindow.loadFile('index.html');

@@ -413,11 +413,27 @@
     sdContainer.innerHTML = SPEED_DIALS.map(sd => `
       <a class="sd-card" href="${sd.url}">
         <div class="sd-icon-wrapper">
-          <img src="https://${sd.domain}/favicon.ico" alt="" onerror="this.parentNode.textContent='${sd.name.charAt(0)}'">
+          <img loading="lazy" data-src="https://${sd.domain}/favicon.ico" alt="" onerror="this.parentNode.textContent='${sd.name.charAt(0)}'">
         </div>
         <div class="sd-label">${sd.name}</div>
       </a>
     `).join('');
+
+    // IntersectionObserver to defer off-screen speed dial favicon rendering
+    const sdObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target.querySelector('img[data-src]');
+          if (img) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+          }
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '50px' });
+
+    document.querySelectorAll('.sd-card').forEach(card => sdObserver.observe(card));
 
     // --- QUICK LINKS PILLS ---
     const QUICK_LINKS = [

@@ -93,31 +93,37 @@ input, select, textarea, button {
 ::-webkit-scrollbar-thumb { background: #0f2b48; border-radius: 3px; border: 1px solid rgba(0, 240, 255, 0.2); }
 
 /* ── GPU Compositing & Layout Containment ───────────────────────────────────────── */
-/* Promote animated surfaces to their own compositor layers */
+/* Promote animated surfaces to hardware GPU compositor layers */
 .tab,
 .tab::after,
 .omnibox-rune,
 .ipc-status-badge,
 .runic-emblem,
-.tab-sleep-moon {
-  will-change: transform, opacity;
-}
-
-/* Lock layout scope to individual tab items */
-.tab {
-  contain: layout style;
-}
-
-/* Sidebars and panels — isolate repaint areas */
+.tab-sleep-moon,
 .chrome-menu,
-.tab-sleep-placeholder,
-.sleep-inner,
 .pm-modal,
 .find-bar,
 .url-suggestions,
-.tab-tooltip {
-  contain: layout style;
+.tab-tooltip,
+.media-hud,
+.toast-notif {
   will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Lock layout scope to isolate browser repaints */
+.tab {
+  contain: layout style paint;
+}
+
+.chrome-menu,
+.pm-modal,
+.tab-sleep-placeholder,
+.sleep-inner,
+.find-bar,
+.url-suggestions,
+.tab-tooltip {
+  contain: layout style paint;
 }
 /* ─────────────────────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar-thumb:hover { background: #00f0ff; box-shadow: 0 0 8px #00f0ff; }
