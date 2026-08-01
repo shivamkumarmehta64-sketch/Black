@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Black Browser | Dark Fantasy Edition</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+  <div id="loading-bar" class="loading-bar hidden"></div>
+
+  <!-- Tab Strip (sits in titlebar area with runic motifs) -->
+  <div id="tab-strip">
+    <div class="runic-emblem" title="Black Engine Artifact">ᛉ</div>
+    <div class="tabs-container" id="tabs-container"></div>
+    <button id="new-tab-btn" class="new-tab-btn" title="Summon New Tab (Ctrl+T)"><span class="material-icons-round">add</span></button>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div class="nav-buttons">
+      <button id="back-btn" class="tb-btn" title="Back (Alt+←)"><span class="material-icons-round">arrow_back</span></button>
+      <button id="forward-btn" class="tb-btn" title="Forward (Alt+→)"><span class="material-icons-round">arrow_forward</span></button>
+      <button id="reload-btn" class="tb-btn" title="Reload (Ctrl+R)"><span class="material-icons-round">refresh</span></button>
+    </div>
+
+    <div id="url-bar">
+      <span id="lock-icon" class="material-icons-round lock-icon">shield</span>
+      <span id="privacy-score" class="privacy-score hidden" title="Privacy score">A</span>
+      <span class="runic-prefix">ᚠ</span>
+      <input type="text" id="url-input" class="address-bar" placeholder="Enter URL or search the Abyss..." autocomplete="off" spellcheck="false">
+      <button id="star-btn" class="tb-btn star-btn" title="Bind Bookmark (Ctrl+D)"><span class="material-icons-round">star_border</span></button>
+    </div>
+
+    <div class="right-buttons">
+      <span id="ipc-status-badge" class="ipc-status-badge" title="IPC Message Bus & C++ Engine Connected">ᚲ IPC ACTIVE</span>
+      <button id="free-btn" class="tb-btn" title="Free Resources Hub (Ctrl+Shift+F)"><span class="material-icons-round">redeem</span></button>
+      <button id="reader-btn" class="tb-btn" title="Reader mode"><span class="material-icons-round">article</span></button>
+      <button id="shield-btn" class="tb-btn shield-btn" title="Privacy & security"><span class="material-icons-round">shield</span><span id="shield-badge" class="shield-badge hidden">0</span></button>
+      <button id="profile-btn" class="tb-btn profile-btn" title="Profile">B</button>
+      <button id="menu-btn" class="tb-btn menu-trigger" title="Customize and control Black"><span class="material-icons-round">more_vert</span></button>
+    </div>
+  </div>
+
+  <!-- Menu Dropdown -->
+  <div id="menu-dropdown" class="chrome-menu hidden">
+    <div class="menu-item" data-action="newtab"><span class="material-icons-round">tab</span> New Tab<span class="menu-shortcut">Ctrl+T</span></div>
+    <div class="menu-item" data-action="history"><span class="material-icons-round">history</span> History<span class="menu-shortcut">Ctrl+H</span></div>
+    <div class="menu-item" data-action="downloads"><span class="material-icons-round">download</span> Downloads<span class="menu-shortcut">Ctrl+J</span></div>
+    <div class="menu-item" data-action="bookmarks"><span class="material-icons-round">star</span> Bookmarks<span class="menu-shortcut">Ctrl+D</span></div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" data-action="zoomin"><span class="material-icons-round">add</span> Zoom In</div>
+    <div class="menu-item" data-action="zoomout"><span class="material-icons-round">remove</span> Zoom Out</div>
+    <div class="menu-item" data-action="zoomreset"><span class="material-icons-round">refresh</span> Reset Zoom<span class="menu-shortcut">Ctrl+0</span></div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" data-action="free"><span class="material-icons-round">redeem</span> Free Resources Hub<span class="menu-shortcut">Ctrl+Shift+F</span></div>
+    <div class="menu-item" data-action="usage"><span class="material-icons-round">timeline</span> Usage Stats</div>
+    <div class="menu-item" data-action="passwords"><span class="material-icons-round">lock</span> Password Manager</div>
+    <div class="menu-item" data-action="reader"><span class="material-icons-round">article</span> Reader Mode</div>
+    <div class="menu-item" data-action="print"><span class="material-icons-round">print</span> Print...<span class="menu-shortcut">Ctrl+P</span></div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" data-action="settings"><span class="material-icons-round">settings</span> Settings</div>
+  </div>
+
+  <!-- Child menus -->
+  <div id="downloads-menu" class="chrome-menu child-menu hidden">
+    <div style="padding:12px 16px;font-size:13px;color:#9aa0a6;border-bottom:1px solid #3c4043;font-weight:500">Downloads</div>
+    <ul id="downloads-list" class="menu-list"></ul>
+  </div>
+
+  <div id="bookmarks-menu" class="chrome-menu child-menu hidden">
+    <div style="padding:12px 16px;font-size:13px;color:#9aa0a6;border-bottom:1px solid #3c4043;font-weight:500">Bookmarks</div>
+    <ul id="bookmarks-list" class="menu-list"></ul>
+  </div>
+
+  <div id="history-menu" class="chrome-menu child-menu hidden">
+    <div style="padding:12px 16px;font-size:13px;color:#9aa0a6;border-bottom:1px solid #3c4043;font-weight:500">History</div>
+    <ul id="history-list" class="menu-list"></ul>
+  </div>
+
+  <div id="privacy-panel" class="chrome-menu child-menu hidden" style="width:360px">
+    <div style="padding:12px 16px;font-size:13px;color:#9aa0a6;border-bottom:1px solid #3c4043;font-weight:500">Privacy & Security</div>
+    <div style="padding:12px 16px">
+      <div class="stat-row"><span class="stat-label">Ads blocked this session</span><span id="stat-blocked" class="stat-value">0</span></div>
+      <div class="stat-row"><span class="stat-label">HTTPS upgrades</span><span class="stat-value" style="color:#81c995">On</span></div>
+      <div class="stat-row"><span class="stat-label">Fingerprint protection</span><span class="stat-value" style="color:#81c995">Active</span></div>
+      <div class="stat-row"><span class="stat-label">Block scripts</span><label class="toggle"><input type="checkbox" id="script-toggle"><span class="slider"></span></label></div>
+    </div>
+  </div>
+
+  <div id="reader-panel" class="chrome-menu child-menu hidden" style="width:280px;padding:16px">
+    <div style="font-size:13px;color:#e8eaed;margin-bottom:8px">Reader Mode</div>
+    <div style="font-size:12px;color:#9aa0a6;margin-bottom:12px">Simplify the page for reading.</div>
+    <button id="enter-reader-btn" class="chrome-btn">Enter Reader Mode</button>
+  </div>
+
+  <!-- Password Manager -->
+  <div id="pm-overlay" class="pm-overlay hidden">
+    <div class="pm-modal">
+      <div id="pm-unlock" class="pm-section">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Password Manager</div>
+        <div style="font-size:12px;color:#9aa0a6;margin-bottom:16px">Unlock with your master password</div>
+        <input type="password" id="pm-master-input" class="pm-input" placeholder="Enter master password">
+        <div id="pm-master-error" class="pm-error hidden">Incorrect password</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button id="pm-unlock-btn" class="chrome-btn">Unlock</button>
+          <button id="pm-setup-btn" class="chrome-btn chrome-btn-secondary">Set Master Password</button>
+        </div>
+      </div>
+      <div id="pm-vault" class="pm-section hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div><span style="font-size:15px;font-weight:600">Password Manager</span><span id="pm-count" style="font-size:11px;color:#9aa0a6;margin-left:6px"></span></div>
+          <button id="pm-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
+        </div>
+        <div id="pm-search-section" style="margin-bottom:10px">
+          <input type="text" id="pm-search" class="pm-input" placeholder="Search saved passwords...">
+        </div>
+        <div id="pm-list" class="pm-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password save notification -->
+  <div id="pm-notification" class="pm-notification hidden">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;color:#9aa0a6">Save password for <span id="pm-notif-domain"></span>?</div>
+      <div id="pm-notif-details" style="font-size:11px;color:#e8eaed;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+    </div>
+    <button id="pm-notif-save" class="chrome-btn" style="width:auto;padding:4px 10px;font-size:11px;margin-left:8px">Save</button>
+    <button id="pm-notif-never" class="chrome-btn chrome-btn-secondary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:4px">Never</button>
+  </div>
+
+  <!-- Browser container -->
+  <div id="browser-container">
+  </div>
+
+  <!-- Find bar -->
+  <div id="find-bar" class="find-bar hidden">
+    <input type="text" id="find-input" placeholder="Find in page..." autocomplete="off">
+    <span id="find-count" class="find-count"></span>
+    <button id="find-prev" class="find-btn" title="Previous"><span class="material-icons-round">keyboard_arrow_up</span></button>
+    <button id="find-next" class="find-btn" title="Next"><span class="material-icons-round">keyboard_arrow_down</span></button>
+    <button id="find-close" class="find-btn" title="Close"><span class="material-icons-round">close</span></button>
+  </div>
+
+  <!-- URL suggestions -->
+  <div id="url-suggestions" class="url-suggestions hidden"></div>
+
+  <!-- Settings Panel -->
+  <div id="settings-overlay" class="pm-overlay hidden">
+    <div class="pm-modal" style="width:520px;max-height:580px">
+      <div id="settings-panel" class="pm-section" style="padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:15px;font-weight:600">Settings</div>
+          <button id="settings-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
+        </div>
+        <div style="max-height:460px;overflow-y:auto;margin:0 -20px;padding:0 20px">
+          <div class="settings-group">
+            <div class="settings-label">Search Engine</div>
+            <select id="settings-engine" class="settings-select">
+              <option value="Google">Google</option>
+              <option value="DuckDuckGo">DuckDuckGo</option>
+              <option value="Brave">Brave Search</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">On Startup</div>
+            <select id="settings-startup" class="settings-select">
+              <option value="home">Open Free Resources Hub</option>
+              <option value="restore">Restore previous session</option>
+              <option value="blank">Open blank page</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Homepage / New Tab</div>
+            <select id="settings-homepage" class="settings-select">
+              <option value="free">Free Resources Hub</option>
+              <option value="blank">Blank Page</option>
+              <option value="custom">Custom URL</option>
+            </select>
+            <input type="text" id="settings-homepage-url" class="pm-input" style="margin-top:6px;display:none" placeholder="https://...">
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Accent Color</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="color-swatch" data-color="#8ab4f8" style="background:#8ab4f8"></button>
+              <button class="color-swatch" data-color="#81c995" style="background:#81c995"></button>
+              <button class="color-swatch" data-color="#fdd663" style="background:#fdd663"></button>
+              <button class="color-swatch" data-color="#f28b82" style="background:#f28b82"></button>
+              <button class="color-swatch" data-color="#c58af9" style="background:#c58af9"></button>
+              <button class="color-swatch" data-color="#ff8bcb" style="background:#ff8bcb"></button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Toolbar Buttons</div>
+            <label class="settings-checkbox"><input type="checkbox" id="settings-show-free" checked> Free Resources</label>
+            <label class="settings-checkbox"><input type="checkbox" id="settings-show-reader" checked> Reader Mode</label>
+            <label class="settings-checkbox"><input type="checkbox" id="settings-show-shield" checked> Shield (Privacy)</label>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Privacy Defaults</div>
+            <label class="settings-checkbox"><input type="checkbox" id="settings-block-scripts"> Block scripts by default</label>
+            <label class="settings-checkbox"><input type="checkbox" id="settings-dark-mode" checked> Force dark mode on all sites</label>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Custom CSS (injected into every page)</div>
+            <textarea id="settings-custom-css" class="settings-textarea" placeholder="/* Your custom CSS here */" spellcheck="false"></textarea>
+          </div>
+          <button id="settings-save-btn" class="chrome-btn" style="margin-top:8px">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Stats Panel -->
+  <div id="usage-overlay" class="pm-overlay hidden">
+    <div class="pm-modal" style="width:460px;max-height:560px">
+      <div class="pm-section" style="padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:15px;font-weight:600">Browsing Usage</div>
+          <button id="usage-close-btn" class="tb-btn" style="width:28px;height:28px" title="Close"><span class="material-icons-round">close</span></button>
+        </div>
+        <div id="usage-summary" style="margin-bottom:12px">
+          <div style="display:flex;gap:16px;justify-content:center">
+            <div class="usage-stat"><div class="usage-stat-val" id="usage-today">0m</div><div class="usage-stat-lbl">Today</div></div>
+            <div class="usage-stat"><div class="usage-stat-val" id="usage-session">0m</div><div class="usage-stat-lbl">This Session</div></div>
+            <div class="usage-stat"><div class="usage-stat-val" id="usage-top">-</div><div class="usage-stat-lbl">Top Site</div></div>
+          </div>
+        </div>
+        <input type="text" id="usage-search" class="pm-input" placeholder="Search sites..." style="margin-bottom:8px">
+        <div id="usage-list" class="pm-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
