@@ -1,0 +1,56 @@
+{
+  "name": "black",
+  "version": "1.0.0",
+  "description": "The Dark Browser — Fast. Private. Secure.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder -w",
+    "build-portable": "electron-builder -w --config.win.target=portable",
+    "build-all": "electron-builder -w --config.win.target=nsis --config.win.target=portable",
+    "build-icon": "node build-icon.js"
+  },
+  "keywords": [
+    "browser",
+    "privacy",
+    "adblock",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-packager": "^17.1.2",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3"
+  },
+  "dependencies": {
+    "electron-context-menu": "^4.0.4"
+  },
+  "build": {
+    "appId": "com.black.browser",
+    "productName": "Black",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.png",
+      "artifactName": "${productName} Setup ${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
+    }
+  }
+}

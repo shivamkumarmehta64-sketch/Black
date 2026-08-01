@@ -68,10 +68,12 @@ if (!gotLock) {
 }
 
 function createWindow() {
+  // Use .ico on Windows (multi-resolution), .png elsewhere
+  const iconFile = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, 'icon.png'),
+    icon: path.join(__dirname, iconFile),
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#1a1c1e',
@@ -385,9 +387,11 @@ app.whenReady().then(() => {
 
   createWindow();
 
-  // System tray
+  // System tray — prefer .ico for multi-res Windows taskbar
   try {
-    const iconPath = path.join(__dirname, 'icon.ico');
+    const iconPath = process.platform === 'win32'
+      ? path.join(__dirname, 'icon.ico')
+      : path.join(__dirname, 'icon.png');
     let trayIcon;
     if (fs.existsSync(iconPath)) {
       trayIcon = nativeImage.createFromPath(iconPath);
