@@ -40,10 +40,11 @@
         "nsis",
         "portable"
       ],
-      "icon": "icon.png",
+      "icon": "icon.ico",
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "nsis": {
+      "installerIcon": "icon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,

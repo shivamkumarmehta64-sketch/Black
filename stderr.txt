@@ -1,0 +1,4 @@
+(node:10720) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `electron --trace-deprecation ...` to show where the warning was created)
+(electron) 'session.getPreloads' is deprecated and will be removed. Please use 'session.getPreloadScripts' instead.
+(electron) 'session.setPreloads' is deprecated and will be removed. Please use 'session.registerPreloadScript' instead.

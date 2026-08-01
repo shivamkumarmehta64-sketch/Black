@@ -1844,7 +1844,6 @@ document.querySelectorAll('[data-action="settings"]').forEach(el => el.addEventL
   await loadHistory(); renderHistory();
   await loadUsage();
 
-(async () => {
   // Load settings first
   try {
     const s = await window.api.loadSettings();
