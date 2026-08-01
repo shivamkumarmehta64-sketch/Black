@@ -114,12 +114,18 @@ function createTab(url = NEW_TAB_URL, isPinned = false) {
   titleEl.className = 'tab-title';
   titleEl.innerText = 'New Tab';
 
+  const audioBtn = document.createElement('span');
+  audioBtn.className = 'tab-audio material-icons-round';
+  audioBtn.textContent = 'volume_up';
+  audioBtn.title = 'Mute site';
+
   const closeBtn = document.createElement('button');
   closeBtn.className = 'tab-close';
   closeBtn.innerHTML = '<span class="material-icons-round">close</span>';
 
   tabEl.appendChild(favIcon);
   tabEl.appendChild(titleEl);
+  tabEl.appendChild(audioBtn);
   tabEl.appendChild(closeBtn);
 
   if (isPinned) {
@@ -144,6 +150,8 @@ function createTab(url = NEW_TAB_URL, isPinned = false) {
     webview: webviewEl,
     titleEl,
     favIcon,
+    audioBtn,
+    muted: false,
     zoomLevel: 0,
     lastActive: Date.now(),
     pageTitle: '',
@@ -153,6 +161,11 @@ function createTab(url = NEW_TAB_URL, isPinned = false) {
     _placeholder: null
   };
   tabs.push(tabObj);
+
+  audioBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleAudioMute(tabObj);
+  });
 
   // If pinned, re-sort DOM to ensure left anchoring
   if (isPinned) {
@@ -238,6 +251,21 @@ function createTab(url = NEW_TAB_URL, isPinned = false) {
     }
     if (typeof addToHistory === 'function') addToHistory(webviewEl.getURL(), tabObj.pageTitle || titleEl.innerText);
     saveSession();
+  });
+
+  webviewEl.addEventListener('media-started-playing', () => {
+    if (!tabObj.muted && tabObj.audioBtn) {
+      tabObj.audioBtn.style.display = 'inline-flex';
+      tabObj.audioBtn.textContent = 'volume_up';
+    }
+    updateMediaHUD();
+  });
+
+  webviewEl.addEventListener('media-paused', () => {
+    if (!tabObj.muted && tabObj.audioBtn) {
+      tabObj.audioBtn.style.display = 'none';
+    }
+    updateMediaHUD();
   });
 
   webviewEl.addEventListener('page-title-updated', (e) => { titleEl.innerText = e.title; tabObj.pageTitle = e.title; });
@@ -481,7 +509,7 @@ document.addEventListener('contextmenu', (e) => {
     } else if (action === 'tc-duplicate') {
       createTab(tabContextTarget.webview.getURL());
     } else if (action === 'tc-mute') {
-      tabContextTarget.webview.setAudioMuted(!tabContextTarget.webview.isAudioMuted());
+      toggleAudioMute(tabContextTarget);
     }
     menu.remove();
   });
@@ -958,6 +986,148 @@ if (tabSearchInput) {
 if (tabSearchOverlay) {
   tabSearchOverlay.addEventListener('click', (e) => {
     if (e.target === tabSearchOverlay) closeTabSearch();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MEDIA FEATURES — PiP, Clickable Mute, Media Session HUD
+// ═══════════════════════════════════════════════════════════
+
+// ── 1. TOAST NOTIFICATION ──
+let toastTimer = null;
+function showToast(message, duration = 2000) {
+  const toast = document.getElementById('toast-notif');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.remove('hidden');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.add('hidden');
+  }, duration);
+}
+
+// ── 2. PICTURE-IN-PICTURE (PiP) ──
+const pipBtn = document.getElementById('pip-btn');
+if (pipBtn) {
+  pipBtn.addEventListener('click', () => {
+    const wv = getActiveWebview();
+    if (!wv) { showToast('No active page', 2000); return; }
+
+    wv.executeJavaScript(`
+      (async function() {
+        const video = document.querySelector('video');
+        if (!video) return { success: false, reason: 'No video found' };
+        try {
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+            return { success: true, active: false };
+          } else {
+            await video.requestPictureInPicture();
+            return { success: true, active: true };
+          }
+        } catch (e) {
+          return { success: false, reason: e.message };
+        }
+      })();
+    `).then(res => {
+      if (res && res.success) {
+        showToast(res.active ? 'PiP Active' : 'PiP Exited', 2000);
+      } else {
+        showToast('No video found on page', 2500);
+      }
+    }).catch(() => {
+      showToast('No video found on page', 2500);
+    });
+  });
+}
+
+// ── 3. CLICKABLE TAB AUDIO MUTE ──
+function toggleAudioMute(tabObj) {
+  if (!tabObj || !tabObj.webview) return;
+  tabObj.muted = !tabObj.muted;
+  try { tabObj.webview.setAudioMuted(tabObj.muted); } catch (_) {}
+  if (tabObj.audioBtn) {
+    if (tabObj.muted) {
+      tabObj.audioBtn.textContent = 'volume_off';
+      tabObj.audioBtn.classList.add('muted');
+      tabObj.audioBtn.title = 'Unmute site';
+      tabObj.audioBtn.style.display = 'inline-flex';
+    } else {
+      tabObj.audioBtn.classList.remove('muted');
+      tabObj.audioBtn.title = 'Mute site';
+      try {
+        if (tabObj.webview.isCurrentlyAudible()) {
+          tabObj.audioBtn.textContent = 'volume_up';
+          tabObj.audioBtn.style.display = 'inline-flex';
+        } else {
+          tabObj.audioBtn.style.display = 'none';
+        }
+      } catch (_) { tabObj.audioBtn.style.display = 'none'; }
+    }
+  }
+  updateMediaHUD();
+}
+
+// ── 4. MEDIA SESSION HUD (Height 32px Mini-Player) ──
+const mediaHud   = document.getElementById('media-hud');
+const hudFavicon = document.getElementById('hud-favicon');
+const hudTitle   = document.getElementById('hud-title');
+const hudPlayBtn = document.getElementById('hud-play-btn');
+const hudMuteBtn = document.getElementById('hud-mute-btn');
+let activeMediaTab = null;
+
+function updateMediaHUD() {
+  if (!mediaHud) return;
+  activeMediaTab = tabs.find(t => {
+    try { return t.webview && (t.webview.isCurrentlyAudible() || t.muted); } catch (_) { return false; }
+  });
+
+  if (activeMediaTab) {
+    mediaHud.classList.remove('hidden');
+    const url = activeMediaTab._savedURL || (activeMediaTab.webview ? activeMediaTab.webview.getURL() : '');
+    if (url && url.startsWith('http')) {
+      try {
+        hudFavicon.src = new URL(url).origin + '/favicon.ico';
+        hudFavicon.style.display = 'block';
+      } catch (_) { hudFavicon.style.display = 'none'; }
+    } else {
+      hudFavicon.style.display = 'none';
+    }
+
+    const title = activeMediaTab.pageTitle || (activeMediaTab.titleEl ? activeMediaTab.titleEl.innerText : '') || 'Playing Media';
+    if (hudTitle) hudTitle.textContent = title;
+
+    if (hudMuteBtn) {
+      hudMuteBtn.innerHTML = `<span class="material-icons-round">${activeMediaTab.muted ? 'volume_off' : 'volume_up'}</span>`;
+    }
+  } else {
+    mediaHud.classList.add('hidden');
+  }
+}
+
+if (hudPlayBtn) {
+  hudPlayBtn.addEventListener('click', () => {
+    if (!activeMediaTab || !activeMediaTab.webview) return;
+    activeMediaTab.webview.executeJavaScript(`
+      (function() {
+        const media = document.querySelector('video, audio');
+        if (media) {
+          if (media.paused) { media.play(); return true; }
+          else { media.pause(); return false; }
+        }
+        return null;
+      })();
+    `).then(isPlaying => {
+      if (hudPlayBtn) {
+        hudPlayBtn.innerHTML = `<span class="material-icons-round">${isPlaying ? 'pause' : 'play_arrow'}</span>`;
+      }
+    }).catch(() => {});
+  });
+}
+
+if (hudMuteBtn) {
+  hudMuteBtn.addEventListener('click', () => {
+    if (activeMediaTab) toggleAudioMute(activeMediaTab);
   });
 }
 findInput.addEventListener('input', () => {

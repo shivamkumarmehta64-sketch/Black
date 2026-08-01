@@ -35,6 +35,7 @@
     </div>
 
     <div class="right-buttons">
+      <button id="pip-btn" class="tb-btn right-circle-btn" title="Picture-in-Picture Mode"><span class="material-icons-round">picture_in_picture_alt</span></button>
       <button id="shield-btn" class="tb-btn shield-btn right-circle-btn" title="Privacy & security"><span class="material-icons-round">shield</span><span id="shield-badge" class="shield-badge hidden">0</span></button>
       <button id="star-btn" class="tb-btn star-btn right-circle-btn" title="Bind Bookmark (Ctrl+D)"><span class="material-icons-round">star_border</span></button>
       <button id="profile-btn" class="tb-btn profile-btn right-circle-btn" title="Profile"><span class="material-icons-round">account_circle</span></button>
@@ -242,6 +243,21 @@
         <span class="search-shortcut">Esc</span>
       </div>
       <div id="tab-search-list" class="tab-search-list"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-notif" class="toast-notif hidden"></div>
+
+  <!-- Media Session HUD (Height 32px) -->
+  <div id="media-hud" class="media-hud hidden">
+    <div class="hud-left">
+      <img id="hud-favicon" class="hud-favicon" src="" alt="" onerror="this.style.display='none'">
+      <span id="hud-title" class="hud-title">Playing Audio...</span>
+    </div>
+    <div class="hud-controls">
+      <button id="hud-play-btn" class="hud-btn" title="Pause / Play"><span class="material-icons-round">pause</span></button>
+      <button id="hud-mute-btn" class="hud-btn" title="Mute / Unmute"><span class="material-icons-round">volume_up</span></button>
     </div>
   </div>
 
