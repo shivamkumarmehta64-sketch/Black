@@ -175,6 +175,22 @@ const NEW_TAB_HTML = (function() {
 '*{margin:0;padding:0;box-sizing:border-box}' +
 'body{color:#f0f9ff;font-family:Inter,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#02050b}' +
 'body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 15%,rgba(0,240,255,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 70%,rgba(2,132,199,0.08),transparent),radial-gradient(ellipse 40% 50% at 15% 80%,rgba(0,240,255,0.06),transparent);pointer-events:none;z-index:0}' +
+'.runic-particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}' +
+'.p{position:absolute;font-family:"Cinzel",serif;color:rgba(0,240,255,0.22);text-shadow:0 0 10px rgba(0,240,255,0.4);will-change:transform,opacity;animation:runicEmberDrift 12s linear infinite;user-select:none}' +
+'.p1{left:8%;bottom:-35px;font-size:24px;animation-delay:0s;animation-duration:10s}' +
+'.p2{left:22%;bottom:-35px;font-size:18px;animation-delay:2.5s;animation-duration:13s}' +
+'.p3{left:37%;bottom:-35px;font-size:22px;animation-delay:4.8s;animation-duration:11s}' +
+'.p4{left:52%;bottom:-35px;font-size:20px;animation-delay:1.2s;animation-duration:12.5s}' +
+'.p5{left:68%;bottom:-35px;font-size:26px;animation-delay:5.5s;animation-duration:11.8s}' +
+'.p6{left:82%;bottom:-35px;font-size:19px;animation-delay:3.1s;animation-duration:14s}' +
+'.p7{left:30%;bottom:-35px;font-size:25px;animation-delay:7.2s;animation-duration:13.2s}' +
+'.p8{left:64%;bottom:-35px;font-size:21px;animation-delay:8.6s;animation-duration:10.8s}' +
+'@keyframes runicEmberDrift{' +
+'0%{transform:translateY(0) scale(0.8) rotate(0deg);opacity:0}' +
+'20%{opacity:0.55;transform:translateY(-22vh) scale(1) rotate(12deg)}' +
+'75%{opacity:0.35;transform:translateY(-78vh) scale(1.1) rotate(-14deg)}' +
+'100%{transform:translateY(-106vh) scale(0.7) rotate(28deg);opacity:0}' +
+'}' +
 '.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;min-height:0;position:relative;z-index:1}' +
 '.runic-title{font-family:"Cinzel",serif;font-size:32px;font-weight:900;letter-spacing:4px;color:#00f0ff;text-shadow:0 0 20px rgba(0,240,255,0.8),0 0 40px rgba(0,240,255,0.4);margin-bottom:8px}' +
 '.greet{font-size:14px;color:#7dd3fc;margin-bottom:24px;font-weight:500;letter-spacing:1px;text-transform:uppercase}' +
@@ -202,17 +218,23 @@ const NEW_TAB_HTML = (function() {
 '.rp-item:hover{background:rgba(138,180,248,0.06)}' +
 '.rp-name{font-size:11px;color:#8ab4f8;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
 '.rp-desc{font-size:10px;color:rgba(255,255,255,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-'.ftr{text-align:center;padding:8px;font-size:10px;color:rgba(255,255,255,0.2);flex-shrink:0;position:relative;z-index:1}' +
+'.ftr{text-align:center;padding:8px;font-size:10px;color:rgba(0,240,255,0.3);flex-shrink:0;position:relative;z-index:1;font-family:"Cinzel",serif}' +
 '</style></head><body>' +
+'<div class="runic-particles">' +
+'<span class="p p1">&#5849;</span><span class="p p2">&#5808;</span><span class="p p3">&#5810;</span><span class="p p4">&#5823;</span>' +
+'<span class="p p5">&#5809;</span><span class="p p6">&#5849;</span><span class="p p7">&#5808;</span><span class="p p8">&#5823;</span>' +
+'</div>' +
 '<div class="main">' +
+'<div class="runic-title">&#5849; BLACK ARTIFACT &#5849;</div>' +
 '<div class="greet">' + greet + '</div>' +
-'<div class="search"><form action="https://www.google.com/search" method="get" onsubmit="var q=this.querySelector(\'input\').value;if(q.indexOf(\'.\')>-1&&q.indexOf(\' \')<0&&!q.startsWith(\'http\')){location=\'https://\'+q;return false}return true"><input type="text" name="q" placeholder="Search Google or type a URL" autofocus></form></div>' +
+'<form class="search" onsubmit="event.preventDefault();var q=document.getElementById(\'q\').value;if(q){location.href=q.startsWith(\'http\')?q:\'https://www.google.com/search?q=\'+encodeURIComponent(q)}">' +
+'<input type="text" id="q" placeholder="&#5808; Enter URL or search the Abyss..." autofocus autocomplete="off">' +
+'</form>' +
 '<div class="sd">' + SD_HTML + '</div>' +
 '<div class="rs">' + RS_HTML + '</div>' +
-'<button class="all-btn" onclick="document.getElementById(\'panel\').classList.toggle(\'open\')">&#9733; All Free Resources</button>' +
 '</div>' +
 '<div id="panel">' + RESOURCE_PANEL_HTML + '</div>' +
-'<div class="ftr">Black &#8212; Free &amp; Private Browser</div>' +
+'<div class="ftr">&#5849; Black Browser &#8212; Dark Fantasy Engine &#5849;</div>' +
 '<script>document.getElementById("rp-close-btn").onclick=function(){document.getElementById("panel").classList.remove("open")};</script>' +
 '</body></html>'
   );

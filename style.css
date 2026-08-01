@@ -81,6 +81,39 @@ body {
   position: relative;
   z-index: 5;
   box-shadow: inset 0 -1px 0 rgba(0, 240, 255, 0.2);
+  overflow: hidden;
+}
+
+#tab-strip::before {
+  content: 'ᛉ   ᚠ   ᚲ   ᛟ   ᚱ   ᛉ   ᚠ   ᛟ';
+  position: absolute;
+  top: 6px; left: 12%; right: 12%;
+  font-family: var(--font-runic);
+  font-size: 11px;
+  color: rgba(0, 240, 255, 0.15);
+  letter-spacing: 50px;
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform, opacity;
+  animation: runicEmbersFloat 8s ease-in-out infinite alternate;
+}
+
+@keyframes runicEmbersFloat {
+  0% {
+    transform: translateY(4px) scale(0.95);
+    opacity: 0.10;
+    text-shadow: 0 0 4px rgba(0, 240, 255, 0.2);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.06);
+    opacity: 0.35;
+    text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
+  }
+  100% {
+    transform: translateY(-7px) scale(0.98);
+    opacity: 0.08;
+    text-shadow: 0 0 2px rgba(0, 240, 255, 0.1);
+  }
 }
 
 .runic-emblem {
@@ -93,12 +126,14 @@ body {
   align-self: center;
   user-select: none;
   cursor: default;
+  z-index: 2;
 }
 
 .tabs-container {
   display: flex; height: 100%; gap: 2px; overflow: hidden;
   -webkit-app-region: no-drag; flex: 1; scroll-behavior: smooth;
   align-items: flex-end; padding-bottom: 0;
+  z-index: 2;
 }
 
 .tab {
@@ -130,8 +165,17 @@ body {
   background: var(--tab-active-bg);
   color: var(--text);
   z-index: 3;
-  border-color: rgba(0, 240, 255, 0.4);
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+  border-color: rgba(0, 240, 255, 0.5);
+  animation: activeTabPulse 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes activeTabPulse {
+  0% {
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.2), inset 0 0 8px rgba(0, 240, 255, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.55), inset 0 0 16px rgba(0, 240, 255, 0.25);
+  }
 }
 
 .tab.active::after {
@@ -142,7 +186,18 @@ body {
   background: linear-gradient(90deg, #00f0ff, #38bdf8, #00f0ff);
   border-radius: 6px 6px 0 0;
   z-index: 4;
-  box-shadow: 0 0 10px #00f0ff, 0 0 4px #00f0ff;
+  animation: activeTabTopLinePulse 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes activeTabTopLinePulse {
+  0% {
+    box-shadow: 0 0 6px #00f0ff, 0 0 2px #00f0ff;
+    opacity: 0.8;
+  }
+  100% {
+    box-shadow: 0 0 18px #00f0ff, 0 0 8px #00f0ff;
+    opacity: 1;
+  }
 }
 
 .tab:hover { background: var(--tab-hover-bg); color: var(--text); border-color: rgba(0, 240, 255, 0.25); }
