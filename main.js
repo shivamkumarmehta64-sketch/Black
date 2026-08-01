@@ -38,14 +38,19 @@ function setupContextMenu() {
 
 setupContextMenu();
 
+// ── GPU & Rendering Performance Flags ──────────────────────────────────────
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'disable_non_proxied_udp');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+app.commandLine.appendSwitch('disable-frame-rate-limit');         // uncap compositor FPS
 app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('num-raster-threads', '4');           // parallel tile rasterisation
+app.commandLine.appendSwitch('enable-accelerated-video-decode');   // GPU video decode
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+// ────────────────────────────────────────────────────────────────────────────
 
 let tray = null;
 
@@ -329,6 +334,54 @@ app.whenReady().then(() => {
     }
     return null;
   });
+
+  // ── IPC NAVIGATE-REQUEST: 150ms debounce + 30s same-URL cache ─────────────
+  const _navDebounceMap = new Map(); // tabId → timer
+  const _navCache = new Map();       // url  → { result, ts }
+  const NAV_DEBOUNCE_MS  = 150;
+  const NAV_CACHE_TTL_MS = 30_000;
+
+  // Dev-mode IPC message counter (logs per minute)
+  let _ipcMsgCount = 0;
+  if (process.env.NODE_ENV === 'development') {
+    setInterval(() => {
+      if (_ipcMsgCount > 0) {
+        console.log(`[Black IPC] ${_ipcMsgCount} messages/min`);
+        _ipcMsgCount = 0;
+      }
+    }, 60_000);
+  }
+
+  ipcMain.handle('navigate-request', (_e, tabId, url) => {
+    if (process.env.NODE_ENV === 'development') _ipcMsgCount++;
+
+    return new Promise((resolve) => {
+      // Clear pending debounce for this tab
+      if (_navDebounceMap.has(tabId)) clearTimeout(_navDebounceMap.get(tabId));
+
+      _navDebounceMap.set(tabId, setTimeout(() => {
+        _navDebounceMap.delete(tabId);
+
+        // Check 30-second same-URL cache
+        const cached = _navCache.get(url);
+        if (cached && (Date.now() - cached.ts) < NAV_CACHE_TTL_MS) {
+          if (process.env.NODE_ENV === 'development')
+            console.log(`[Black IPC] Cache hit for ${url}`);
+          return resolve({ cached: true, url });
+        }
+
+        // Cache the navigation intent
+        _navCache.set(url, { ts: Date.now() });
+        // Evict stale cache entries
+        for (const [k, v] of _navCache) {
+          if (Date.now() - v.ts > NAV_CACHE_TTL_MS) _navCache.delete(k);
+        }
+
+        resolve({ cached: false, url });
+      }, NAV_DEBOUNCE_MS));
+    });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
 
   createWindow();
 

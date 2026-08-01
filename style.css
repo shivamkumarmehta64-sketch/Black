@@ -91,6 +91,35 @@ input, select, textarea, button {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #02050b; }
 ::-webkit-scrollbar-thumb { background: #0f2b48; border-radius: 3px; border: 1px solid rgba(0, 240, 255, 0.2); }
+
+/* ── GPU Compositing & Layout Containment ───────────────────────────────────────── */
+/* Promote animated surfaces to their own compositor layers */
+.tab,
+.tab::after,
+.omnibox-rune,
+.ipc-status-badge,
+.runic-emblem,
+.tab-sleep-moon {
+  will-change: transform, opacity;
+}
+
+/* Lock layout scope to individual tab items */
+.tab {
+  contain: layout style;
+}
+
+/* Sidebars and panels — isolate repaint areas */
+.chrome-menu,
+.tab-sleep-placeholder,
+.sleep-inner,
+.pm-modal,
+.find-bar,
+.url-suggestions,
+.tab-tooltip {
+  contain: layout style;
+  will-change: transform, opacity;
+}
+/* ─────────────────────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar-thumb:hover { background: #00f0ff; box-shadow: 0 0 8px #00f0ff; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
@@ -117,28 +146,28 @@ input, select, textarea, button {
 #tab-strip {
   display: flex; align-items: flex-end;
   height: 36px;
-  background: #020408;
-  border-bottom: 1px solid var(--border);
-  -webkit-app-region: drag;
-  padding: 0 8px; gap: 4px;
   position: relative;
-  z-index: 5;
-  box-shadow: inset 0 -1px 0 rgba(0, 240, 255, 0.2);
   overflow: hidden;
+  -webkit-app-region: drag;
+  z-index: 10;
+  contain: layout style;   /* limit repaint to strip only */
 }
 
+/* Runic glyph float in tab strip bg — GPU only (transform + opacity) */
 #tab-strip::before {
-  content: 'ᛉ   ᚠ   ᚲ   ᛟ   ᚱ   ᛉ   ᚠ   ᛟ';
+  content: 'ᛉ ᚠ ᚲ ᛟ ᚱ ᛉ ᚠ ᚲ';
   position: absolute;
-  top: 6px; left: 12%; right: 12%;
-  font-family: var(--font-runic);
+  top: 0; left: 0;
+  font-family: var(--font-cinzel);
   font-size: 11px;
-  color: rgba(0, 240, 255, 0.15);
-  letter-spacing: 50px;
+  letter-spacing: 18px;
+  color: transparent;
   pointer-events: none;
-  z-index: 1;
+  white-space: nowrap;
+  z-index: 0;
+  opacity: 0;
   will-change: transform, opacity;
-  animation: runicEmbersFloat 8s ease-in-out infinite alternate;
+  animation: runicEmbersFloat 18s linear infinite alternate;
 }
 
 @keyframes runicEmbersFloat {
@@ -263,7 +292,8 @@ input, select, textarea, button {
   background: rgba(0, 240, 255, 0.05);
   color: rgba(125, 211, 252, 0.75);
   border-color: rgba(0, 240, 255, 0.18);
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.12), inset 0 0 10px rgba(0, 240, 255, 0.04);
+  /* GPU composited — no layout repaints */
+  filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.15));
 }
 
 .tab:hover::after {
@@ -277,18 +307,20 @@ input, select, textarea, button {
   color: #f0f9ff;
   z-index: 3;
   border-color: rgba(0, 240, 255, 0.28);
-  box-shadow: 0 0 18px rgba(0, 240, 255, 0.18), inset 0 0 12px rgba(0, 240, 255, 0.06);
+  /* filter is GPU composited — cheaper than multi-layer box-shadow */
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.18));
 }
 
 .tab.active::after {
   width: 100%;
-  box-shadow: 0 0 12px #00f0ff, 0 0 5px #00f0ff;
+  /* GPU composited glow instead of box-shadow blur > 20px */
+  filter: drop-shadow(0 0 6px #00f0ff);
   animation: energyLinePulse 2.8s ease-in-out infinite alternate;
 }
 
 @keyframes energyLinePulse {
-  0%   { box-shadow: 0 0 8px #00f0ff, 0 0 3px #38bdf8; opacity: 0.85; }
-  100% { box-shadow: 0 0 20px #00f0ff, 0 0 8px #38bdf8; opacity: 1; }
+  0%   { filter: drop-shadow(0 0 4px #00f0ff);  opacity: 0.85; }
+  100% { filter: drop-shadow(0 0 10px #00f0ff); opacity: 1; }
 }
 
 /* Active tab title bright */
@@ -458,8 +490,11 @@ input, select, textarea, button {
   border-radius: 24px;
   padding: 0 10px; height: 30px;
   max-width: 720px; margin: 0 auto;
+  /* Use transform-based animation — no layout repaints */
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease), background 0.15s var(--ease);
   position: relative;
+  contain: layout style;
+  will-change: transform;
 }
 #url-bar:hover { border-color: var(--text-tertiary); }
 #url-bar:focus-within {

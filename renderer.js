@@ -171,8 +171,12 @@ const RS_HTML = RESOURCE_TOP.map(r =>
 const NEW_TAB_HTML = (function() {
   var h = new Date().getHours();
   var greet = h < 12 ? 'Welcome to the Sanctuary' : h < 18 ? 'Enter the Abyss' : 'Shadows Veil the Realm';
+  // DNS prefetch for all speed dial hostnames — reduces lookup latency on click
+  const DNS_PREFETCH = SPEED_DIALS.map(s => {
+    try { return '<link rel="dns-prefetch" href="' + new URL(s.url).origin + '">'; } catch (_) { return ''; }
+  }).join('');
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(
-'<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+'<!DOCTYPE html><html><head><meta charset="utf-8">' + DNS_PREFETCH + '<style>' +
 '*{margin:0;padding:0;box-sizing:border-box}' +
 'body{color:#f0f9ff;font-family:Inter,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#02050b}' +
 'body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 15%,rgba(0,240,255,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 70%,rgba(2,132,199,0.08),transparent),radial-gradient(ellipse 40% 50% at 15% 80%,rgba(0,240,255,0.06),transparent);pointer-events:none;z-index:0}' +
@@ -1507,7 +1511,8 @@ document.querySelectorAll('[data-action="settings"]').forEach(el => el.addEventL
   await loadHistory(); renderHistory();
   await loadUsage();
 
-  // Load settings
+(async () => {
+  // Load settings first
   try {
     const s = await window.api.loadSettings();
     if (s) Object.assign(settings, s);
@@ -1516,10 +1521,21 @@ document.querySelectorAll('[data-action="settings"]').forEach(el => el.addEventL
 
   const startup = settings.startup || 'home';
   if (startup === 'restore') {
-    const session = await loadSession();
-    if (session && Array.isArray(session) && session.length > 0) {
-      session.forEach(s => createTab(s.url));
+    const savedSession = await loadSession();
+    if (savedSession && Array.isArray(savedSession) && savedSession.length > 0) {
+      // ── LAZY STARTUP: create only the first (last active) tab immediately ──
+      // The rest are deferred by 400ms so the main window renders fast
+      createTab(savedSession[0].url);
       switchTab(tabs[0].id);
+
+      if (savedSession.length > 1) {
+        let delay = 400;
+        for (let i = 1; i < savedSession.length; i++) {
+          const saved = savedSession[i];
+          setTimeout(() => createTab(saved.url), delay);
+          delay += 200; // stagger each additional tab by 200ms
+        }
+      }
       return;
     }
   }
