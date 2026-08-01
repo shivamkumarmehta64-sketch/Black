@@ -180,24 +180,41 @@ input, select, textarea, button {
   z-index: 2;
 }
 
+/* ── Inactive Tab ── very dim, minimal presence */
 .tab {
   display: flex; align-items: center;
-  background: var(--tab-inactive-bg);
-  color: var(--text-secondary);
+  background: rgba(3, 6, 13, 0.4);
+  color: rgba(125, 211, 252, 0.38);
   padding: 0 10px 0 14px;
-  height: 30px;
+  height: 32px;
   min-width: 100px; max-width: 220px;
   font-size: 12px; cursor: default;
   -webkit-app-region: no-drag;
   position: relative;
   user-select: none;
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-  border: 1px solid rgba(0, 240, 255, 0.08);
+  border-radius: 6px 6px 0 0;
+  border: 1px solid rgba(0, 240, 255, 0.04);
   border-bottom: none;
-  transition: all 0.15s var(--ease);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
   flex-shrink: 0;
-  animation: tabEnter 0.2s var(--ease);
+  animation: tabEnter 0.22s var(--ease);
+  /* bottom energy-line: starts at 0 width, transitions on .active */
+  overflow: hidden;
+}
+
+/* Energy-line element: shared by all tabs, hidden on inactive */
+.tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  height: 3px;
+  width: 0%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, #00f0ff, #38bdf8, #00f0ff, transparent);
+  border-radius: 3px 3px 0 0;
+  box-shadow: none;
+  transition: width 0.35s var(--ease), box-shadow 0.35s var(--ease);
+  z-index: 4;
 }
 
 .tab-title {
@@ -241,46 +258,41 @@ input, select, textarea, button {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.tab.active {
-  background: var(--tab-active-bg);
-  color: var(--text);
-  z-index: 3;
-  border-color: rgba(0, 240, 255, 0.5);
-  animation: activeTabPulse 3.5s ease-in-out infinite alternate;
+/* ── Hover: ghost cyan glow ── */
+.tab:hover {
+  background: rgba(0, 240, 255, 0.05);
+  color: rgba(125, 211, 252, 0.75);
+  border-color: rgba(0, 240, 255, 0.18);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.12), inset 0 0 10px rgba(0, 240, 255, 0.04);
 }
 
-@keyframes activeTabPulse {
-  0% {
-    box-shadow: 0 0 12px rgba(0, 240, 255, 0.2), inset 0 0 8px rgba(0, 240, 255, 0.1);
-  }
-  100% {
-    box-shadow: 0 0 25px rgba(0, 240, 255, 0.55), inset 0 0 16px rgba(0, 240, 255, 0.25);
-  }
+.tab:hover::after {
+  width: 60%;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+}
+
+/* ── Active Tab: full-width 3px energy-line, expands 0→100% ── */
+.tab.active {
+  background: rgba(8, 16, 30, 0.95);
+  color: #f0f9ff;
+  z-index: 3;
+  border-color: rgba(0, 240, 255, 0.28);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.18), inset 0 0 12px rgba(0, 240, 255, 0.06);
 }
 
 .tab.active::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #00f0ff, #38bdf8, #00f0ff);
-  border-radius: 6px 6px 0 0;
-  z-index: 4;
-  animation: activeTabTopLinePulse 2.5s ease-in-out infinite alternate;
+  width: 100%;
+  box-shadow: 0 0 12px #00f0ff, 0 0 5px #00f0ff;
+  animation: energyLinePulse 2.8s ease-in-out infinite alternate;
 }
 
-@keyframes activeTabTopLinePulse {
-  0% {
-    box-shadow: 0 0 6px #00f0ff, 0 0 2px #00f0ff;
-    opacity: 0.8;
-  }
-  100% {
-    box-shadow: 0 0 18px #00f0ff, 0 0 8px #00f0ff;
-    opacity: 1;
-  }
+@keyframes energyLinePulse {
+  0%   { box-shadow: 0 0 8px #00f0ff, 0 0 3px #38bdf8; opacity: 0.85; }
+  100% { box-shadow: 0 0 20px #00f0ff, 0 0 8px #38bdf8; opacity: 1; }
 }
 
-.tab:hover { background: var(--tab-hover-bg); color: var(--text); border-color: rgba(0, 240, 255, 0.25); }
+/* Active tab title bright */
+.tab.active .tab-title { color: #f0f9ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.4); }
 
 .tab-title {
   flex: 1; white-space: nowrap; overflow: hidden;
@@ -456,19 +468,63 @@ input, select, textarea, button {
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+/* ── Omnibox: Rune Icon ── */
+.omnibox-rune {
+  font-family: var(--font-cinzel);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+  margin-right: 6px;
+  flex-shrink: 0;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.3s var(--ease);
+  will-change: transform;
+  letter-spacing: 0;
+}
+
+/* Loading state: slow continuous 360 spin */
+.omnibox-rune.loading {
+  animation: runeOrbitSpin 1.6s linear infinite;
+}
+
+@keyframes runeOrbitSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Lock Icon: HTTPS green / HTTP red ── */
 .lock-icon {
-  font-size: 14px; color: var(--text-secondary);
-  margin-right: 4px; flex-shrink: 0;
-  transition: color 0.15s var(--ease);
+  font-size: 14px;
+  margin-right: 2px; flex-shrink: 0;
+  transition: color 0.25s var(--ease), text-shadow 0.25s var(--ease);
+}
+
+.lock-icon.secure {
+  color: #34d399;
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.7), 0 0 16px rgba(52, 211, 153, 0.35);
+}
+
+.lock-icon.insecure {
+  color: #f43f5e;
+  text-shadow: 0 0 8px rgba(244, 63, 94, 0.7), 0 0 16px rgba(244, 63, 94, 0.35);
+  animation: insecurePulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes insecurePulse {
+  0%   { text-shadow: 0 0 6px rgba(244, 63, 94, 0.5); }
+  100% { text-shadow: 0 0 16px rgba(244, 63, 94, 0.9), 0 0 4px #f43f5e; }
 }
 
 .address-bar {
   flex: 1; background: transparent; border: none;
-  color: var(--text); font-size: 13px; font-family: inherit;
+  color: var(--text); font-size: 13px; font-family: var(--font-inter);
   outline: none; padding: 0 4px; height: 28px;
   direction: ltr;
 }
-.address-bar::placeholder { color: var(--text-secondary); font-size: 13px; }
+.address-bar::placeholder { color: var(--text-secondary); font-size: 13px; font-family: var(--font-inter); }
 
 /* Domain highlighting in URL bar */
 .url-domain { color: var(--text); font-weight: 500; }

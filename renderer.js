@@ -9,6 +9,7 @@ const loadingBar = document.getElementById('loading-bar');
 const shieldBtn = document.getElementById('shield-btn');
 const shieldBadge = document.getElementById('shield-badge');
 const lockIcon = document.getElementById('lock-icon');
+const omniboxRune = document.getElementById('omnibox-rune');
 const starBtn = document.getElementById('star-btn');
 const menuBtn = document.getElementById('menu-btn');
 const menuDropdown = document.getElementById('menu-dropdown');
@@ -285,6 +286,8 @@ function createTab(url = NEW_TAB_HTML) {
     if (activeTabId === tabId) reloadBtn.innerHTML = '<span class="material-icons-round">close</span>';
     titleEl.innerText = 'Loading...';
     if (activeTabId === tabId) updateNavButtons(webviewEl);
+    // Spin the omnibox rune during load
+    if (activeTabId === tabId && omniboxRune) omniboxRune.classList.add('loading');
   });
 
   webviewEl.addEventListener('did-stop-loading', () => {
@@ -295,6 +298,8 @@ function createTab(url = NEW_TAB_HTML) {
       updateLockIcon(webviewEl.getURL());
       updatePrivacyScore(tabObj);
       updateNavButtons(webviewEl);
+      // Stop rune spin
+      if (omniboxRune) omniboxRune.classList.remove('loading');
     }
     if (typeof addToHistory === 'function') addToHistory(webviewEl.getURL(), tabObj.pageTitle || titleEl.innerText);
     saveSession();
@@ -395,10 +400,21 @@ function getActiveWebview() { const t = tabs.find(t => t.id === activeTabId); re
 function getActiveTab() { return tabs.find(t => t.id === activeTabId) || null; }
 
 function updateLockIcon(url) {
-  if (!url || url === 'about:blank') { lockIcon.textContent = 'lock'; lockIcon.style.color = ''; return; }
-  if (url.startsWith('https://')) { lockIcon.textContent = 'lock'; lockIcon.style.color = '#81c995'; }
-  else if (url.startsWith('http://')) { lockIcon.textContent = 'lock_open'; lockIcon.style.color = '#f28b82'; }
-  else { lockIcon.textContent = 'info'; lockIcon.style.color = ''; }
+  if (!url || url === 'about:blank') {
+    lockIcon.textContent = 'shield';
+    lockIcon.className = 'material-icons-round lock-icon';
+    return;
+  }
+  if (url.startsWith('https://')) {
+    lockIcon.textContent = 'lock';
+    lockIcon.className = 'material-icons-round lock-icon secure';
+  } else if (url.startsWith('http://')) {
+    lockIcon.textContent = 'lock_open';
+    lockIcon.className = 'material-icons-round lock-icon insecure';
+  } else {
+    lockIcon.textContent = 'info';
+    lockIcon.className = 'material-icons-round lock-icon';
+  }
 }
 
 function showLoading() { loadingBar.classList.remove('hidden'); loadingBar.classList.add('active'); loadingBar.style.width = '30%'; }
