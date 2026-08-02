@@ -8,7 +8,10 @@
     "build": "electron-builder -w",
     "build-portable": "electron-builder -w --config.win.target=portable",
     "build-all": "electron-builder -w --config.win.target=nsis --config.win.target=portable",
-    "build-icon": "node build-icon.js"
+    "build-icon": "node build-icon.js",
+    "build-linux": "electron-builder -l",
+    "build-linux-appimage": "electron-builder -l --config.linux.target=AppImage",
+    "build-linux-deb": "electron-builder -l --config.linux.target=deb"
   },
   "keywords": [
     "browser",
@@ -61,6 +64,17 @@
     },
     "portable": {
       "artifactName": "${productName} Portable ${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "icon.png",
+      "category": "Network",
+      "maintainer": "Shivam Mehta <shivamkumarmehta64-sketch@users.noreply.github.com>",
+      "synopsis": "The Dark Browser - Fast. Private. Secure.",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
   }
 }

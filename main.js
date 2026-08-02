@@ -64,6 +64,7 @@ app.on('will-quit', flushDebouncedWrites);
 let ssdCache = null;
 let ssdCacheAt = 0;
 ipcMain.handle('ssd-health', async (_e, force) => {
+  if (process.platform !== 'win32') return { ok: false, error: 'unsupported platform' };
   if (!force && ssdCache && Date.now() - ssdCacheAt < 30000) return ssdCache;
   const { execFile } = require('child_process');
   const script = `
@@ -262,7 +263,7 @@ function setupContextMenu() {
 setupContextMenu();
 
 // Windows-style toast notifications from Great Sage (must be set before whenReady)
-app.setAppUserModelId('com.black.browser');
+if (process.platform === 'win32') app.setAppUserModelId('com.black.browser');
 
 // Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
 protocol.registerSchemesAsPrivileged([
@@ -336,7 +337,78 @@ function createWindow(opts = {}) {
   return win;
 }
 
+// ── WINDOWS BROWSER REGISTRATION (Open With / Default Apps list) ────────────
+// Registers Black with Windows so it appears in "Open with" menus, the
+// Windows default-apps list, and as an HTML handler. Uses only HKCU (per-user)
+// — no admin rights required. Safe to re-run on every launch: keeps the
+// registration fresh if the app is moved to a new location.
+function registerAsBrowser() {
+  if (process.platform !== 'win32') return;
+  const { execFile } = require('child_process');
+  const appName = 'Black';
+  const appId = 'com.black.browser';
+  const regClass = 'BlackBrowser';
+  const htmlClass = 'BlackBrowserHTML';
+  const exe = process.execPath.replace(/'/g, "''");
+  const exeCommand = `"${exe}" "%1"`;
+  const exeIcon = `"${exe}",0`;
+  const description = 'The Dark Browser — Fast. Private. Secure.';
+  const company = 'Shivam Mehta';
+
+  const reg = (key, values) => {
+    for (const [name, value] of Object.entries(values)) {
+      const args = ['add', key];
+      if (name === '@') args.push('/ve'); else args.push('/v', name);
+      args.push('/t', 'REG_SZ', '/d', value, '/f');
+      execFile('reg.exe', args, { windowsHide: true }, (err) => {
+        if (err) console.error(`[Black] Reg write failed ${key}\\${name}:`, err.message);
+      });
+    }
+  };
+
+  reg(`HKCU\\Software\\RegisteredApplications`, { [appName]: `Software\\Classes\\${regClass}\\Capabilities` });
+
+  reg(`HKCU\\Software\\Classes\\${regClass}`, {
+    '@': exeCommand,
+  });
+  reg(`HKCU\\Software\\Classes\\${regClass}\\DefaultIcon`, { '@': exeIcon });
+  reg(`HKCU\\Software\\Classes\\${regClass}\\Capabilities`, {
+    ApplicationName: appName,
+    ApplicationDescription: description,
+    ApplicationIcon: exeIcon,
+    ApplicationCompany: company,
+  });
+  reg(`HKCU\\Software\\Classes\\${regClass}\\Capabilities\\URLAssociations`, {
+    http: regClass,
+    https: regClass,
+  });
+  reg(`HKCU\\Software\\Classes\\${regClass}\\Capabilities\\FileAssociations`, {
+    '.htm': `${htmlClass}`,
+    '.html': `${htmlClass}`,
+  });
+  reg(`HKCU\\Software\\Classes\\${regClass}\\Application`, {
+    AppUserModelID: appId,
+    ApplicationName: appName,
+    ApplicationDescription: description,
+    ApplicationIcon: exeIcon,
+    FriendlyAppName: appName,
+  });
+  reg(`HKCU\\Software\\Classes\\${htmlClass}`, { '@': exeCommand });
+  reg(`HKCU\\Software\\Classes\\${htmlClass}\\DefaultIcon`, { '@': exeIcon });
+  reg(`HKCU\\Software\\Classes\\${htmlClass}\\Application`, { AppUserModelID: appId, FriendlyAppName: appName });
+
+  // "Open with" app-list entry (so Black.exe shows even while another
+  // browser is the default) and the http/https protocol handlers.
+  reg(`HKCU\\Software\\Classes\\Applications\\Black.exe\\shell\\open\\command`, { '@': exeCommand });
+  reg(`HKCU\\Software\\Classes\\Applications\\Black.exe\\DefaultIcon`, { '@': exeIcon });
+  console.log('[Black] Registered as a Windows browser (HKCU)');
+}
+
+ipcMain.on('register-browser', () => registerAsBrowser());
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.whenReady().then(() => {
+  registerAsBrowser();
   // Custom protocol for internal browser pages (black-ui://newtab, warning)
   protocol.registerFileProtocol('black-ui', (request, callback) => {
     let urlPath = request.url.replace(/^black-ui:\/\//, '');
@@ -499,6 +571,7 @@ app.whenReady().then(() => {
   }
 
   function startShieldsEngine() {
+    if (process.platform !== 'win32') return;
     const exe = shieldsExePath();
     if (!fs.existsSync(exe)) {
       console.error('[Black] Native shields engine not found:', exe);
