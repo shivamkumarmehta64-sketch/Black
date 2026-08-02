@@ -7,6 +7,16 @@ const startTime = Date.now();
 let mainWindow;
 let blockedCount = 0;
 let windowCascadeCount = 0;
+let pendingUrl = null;
+
+// Extract a web URL from a command line (Windows passes "Black.exe <url>"
+// when Black is chosen as the browser / default protocol handler).
+function urlFromArgv(argv = []) {
+  for (const a of argv) {
+    if (typeof a === 'string' && (a.startsWith('http://') || a.startsWith('https://'))) return a;
+  }
+  return null;
+}
 
 // ── WEBVIEW MEMORY: GC on window blur & IPC collector ────────────────────────
 app.on('browser-window-blur', () => {
@@ -284,11 +294,15 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, argv) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
+      const url = urlFromArgv(argv);
+      if (url && !mainWindow.webContents.isDestroyed()) {
+        try { mainWindow.webContents.send('open-in-tab', url); } catch (e) {}
+      }
     }
   });
 }
@@ -327,7 +341,16 @@ function createWindow(opts = {}) {
     }
   };
 
-  win.once('ready-to-show', showWindow);
+  win.once('ready-to-show', () => {
+    showWindow();
+    // If launched with a URL argument (e.g. opened a link from another app),
+    // route it to the tab strip once the renderer is ready.
+    if (!incognito && pendingUrl) {
+      const u = pendingUrl;
+      pendingUrl = null;
+      setTimeout(() => { try { win.webContents.send('open-in-tab', u); } catch (e) {} }, 150);
+    }
+  });
 
   // Safety fallback: Ensure window shows even if ready-to-show is delayed
   setTimeout(showWindow, 1200);
@@ -1098,6 +1121,7 @@ app.whenReady().then(() => {
   // ─────────────────────────────────────────────────────────────────────────
 
   mainWindow = createWindow();
+  pendingUrl = urlFromArgv(process.argv);
 
   // System tray — prefer .ico for multi-res Windows taskbar
   try {
@@ -1398,7 +1422,7 @@ app.whenReady().then(() => {
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow();
+  mainWindow = createWindow();
     }
   });
 });
