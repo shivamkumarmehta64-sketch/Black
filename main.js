@@ -653,9 +653,6 @@ app.whenReady().then(() => {
     }
   } catch (e) {}
 
-  app.on('will-quit', () => {
-  });
-
   ipcMain.handle('shields-status', () => ({
     engine: uboReady ? 'ubo' : 'fallback',
     rules: uboRulesCount,
@@ -1388,6 +1385,44 @@ app.whenReady().then(() => {
                 try { return stripAdKeys(_origParse.apply(this, arguments)); }
                 catch(e) { return _origParse.apply(this, arguments); }
               };
+
+              // Brave-style layer: hook window.fetch so youtubei/v1/player
+              // responses are ad-stripped BEFORE the player parses them
+              // (Response.json() bypasses the patched JSON.parse). The rebuilt
+              // Response must NOT keep content-encoding/content-length —
+              // clone().text() decompresses the body, and re-claiming the
+              // original compressed headers corrupts the player response.
+              var _origFetch = window.fetch;
+              if (typeof _origFetch === 'function') {
+                window.fetch = function() {
+                  var args = arguments;
+                  var url = '';
+                  try { url = typeof args[0] === 'string' ? args[0] : (args[0].url || ''); } catch(e) {}
+                  var p = _origFetch.apply(this, args);
+                  if (url.indexOf('youtubei/v1/player') === -1) return p;
+                  return p.then(function(res) {
+                    try {
+                      var ct = (res.headers.get('content-type') || '');
+                      if (ct.indexOf('json') === -1) return res;
+                      return res.clone().text().then(function(text) {
+                        try {
+                          var obj = JSON.parse(text);
+                          var cleaned = JSON.stringify(obj);
+                          if (cleaned !== text) {
+                            var h = new Headers();
+                            res.headers.forEach(function(v, k) {
+                              var lk = String(k).toLowerCase();
+                              if (lk !== 'content-encoding' && lk !== 'content-length') h.append(k, v);
+                            });
+                            return new Response(cleaned, { status: res.status, statusText: res.statusText, headers: h });
+                          }
+                        } catch(e) {}
+                        return res;
+                      });
+                    } catch(e) { return res; }
+                  });
+                };
+              }
 
               var style = document.createElement('style');
               try {

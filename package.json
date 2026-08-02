@@ -39,15 +39,6 @@
     "directories": {
       "output": "dist"
     },
-    "extraResources": [
-      {
-        "from": "native_engine",
-        "to": "native_engine",
-        "filter": [
-          "black_shields.exe"
-        ]
-      }
-    ],
     "win": {
       "target": [
         "nsis",
