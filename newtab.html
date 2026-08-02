@@ -70,25 +70,30 @@
 
         #content {
             position: relative; z-index: 1;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center;
             height: 100vh; width: 100%;
-            padding: 72px 24px 92px;
+            padding: clamp(36px, 7vh, 72px) 24px 96px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
+        #content::-webkit-scrollbar { width: 6px; }
+        #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
         #content > * { flex: none; }
 
         .hero { text-align: center; }
         .clock {
             display: flex; align-items: baseline; justify-content: center; gap: 12px;
-            font-size: clamp(64px, 11vw, 132px); font-weight: 200; line-height: 1;
+            font-size: clamp(44px, 6.5vw, 78px); font-weight: 200; line-height: 1;
             letter-spacing: -0.02em; text-shadow: 0 4px 32px rgba(0,0,0,0.45);
         }
-        .ampm { font-size: clamp(18px, 2vw, 26px); font-weight: 400; color: var(--accent); }
+        .ampm { font-size: clamp(16px, 1.8vw, 22px); font-weight: 400; color: var(--accent); }
         .date {
-            margin-top: 12px; font-size: clamp(14px, 1.6vw, 17px); font-weight: 400;
+            margin-top: 9px; font-size: clamp(13px, 1.5vw, 16px); font-weight: 400;
             letter-spacing: 0.05em; color: rgba(255,255,255,0.72);
         }
         .greeting {
-            margin-top: 9px; font-size: clamp(20px, 2.6vw, 27px); font-weight: 300;
+            margin-top: 7px; font-size: clamp(17px, 2.2vw, 23px); font-weight: 300;
             color: rgba(255,255,255,0.92); display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .name-edit {
@@ -105,9 +110,9 @@
         }
 
         .search-bar {
-            width: min(620px, 92vw); height: 52px; border-radius: 999px;
+            width: min(640px, 92vw); height: 52px; border-radius: 999px;
             display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px;
-            margin-top: 30px;
+            margin-top: 24px;
             transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
         .search-bar:focus-within {
@@ -128,90 +133,159 @@
             color: rgba(255,255,255,0.55); font-size: 12px; font-weight: 600;
         }
 
-        .quote {
-            margin-top: 16px; max-width: min(600px, 90vw);
-            padding: 10px 22px; border-radius: 999px;
-            display: flex; align-items: center; gap: 12px;
-            font-size: clamp(13px, 1.4vw, 14.5px); font-weight: 300;
-            color: rgba(255,255,255,0.78); line-height: 1.5; text-align: center;
+        /* ── WIDGET GRID (Chrome-style modules) ─────────────────────────── */
+        #widget-grid {
+            margin-top: 30px;
+            width: min(1080px, 100%);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            align-items: start;
         }
-        .q-mark { color: var(--accent); font-size: 20px; line-height: 1; flex: none; transform: translateY(-2px); }
-        .q-author { color: rgba(255,255,255,0.45); font-weight: 400; white-space: nowrap; }
-        body.no-quote .quote { display: none; }
+        @media (max-width: 980px) { #widget-grid { grid-template-columns: 1fr; } }
 
-        #dials-wrap { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .dials-label {
-            font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-            color: rgba(255,255,255,0.4);
+        .widget {
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            display: flex; flex-direction: column; gap: 12px;
+            min-width: 0;
         }
-        .speed-dial { display: grid; grid-template-columns: repeat(4, 92px); gap: 18px; }
-        @media (max-width: 560px) { .speed-dial { grid-template-columns: repeat(3, 84px); gap: 14px; } }
-
-        .dial-card {
-            width: 92px; aspect-ratio: 1; border-radius: 18px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-            text-decoration: none; color: #fff; cursor: pointer; position: relative;
-            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        .widget-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .widget-title {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
         }
-        .dial-card:hover {
-            transform: translateY(-4px);
-            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.4), 0 0 18px color-mix(in srgb, var(--accent) 16%, transparent), inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-        .dial-favicon-wrap {
-            width: 44px; height: 44px; border-radius: 13px; position: relative;
+        .widget-btn {
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer; flex: none;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.08); overflow: hidden;
+            transition: border-color 0.15s, color 0.15s;
         }
-        .dial-letter {
-            position: absolute; font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.9);
+        .widget-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .widget.no-data { display: none !important; }
+
+        body.widget-off-quote #quote-card,
+        body.widget-off-dials #dials-card,
+        body.widget-off-gems #gems-card,
+        body.widget-off-continue #continue-card,
+        body.widget-off-notes #notes-card { display: none; }
+
+        /* Quote card */
+        .quote-text {
+            font-size: clamp(13px, 1.3vw, 14.5px); font-weight: 300;
+            color: rgba(255,255,255,0.82); line-height: 1.55;
+            cursor: pointer;
         }
-        .dial-favicon-wrap img { position: absolute; width: 100%; height: 100%; object-fit: contain; }
+        .quote-text:hover { color: rgba(255,255,255,0.95); }
+        .quote-author { margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.45); font-weight: 400; }
+
+        /* Quick Access — Chrome-style circular tiles */
+        .speed-dial {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+            gap: 16px 10px;
+        }
+        .dial-card {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            text-decoration: none; color: #fff; cursor: pointer; position: relative;
+            min-width: 0;
+        }
+        .dial-card:focus { outline: none; }
+        .dial-tile { position: relative; width: 56px; height: 56px; flex: none; }
+        .dial-favicon-wrap {
+            width: 56px; height: 56px; border-radius: 50%; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.09); overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .dial-card:hover .dial-favicon-wrap {
+            transform: translateY(-2px);
+            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+        }
+        .dial-letter { position: absolute; font-size: 23px; font-weight: 500; color: rgba(255,255,255,0.9); }
+        .dial-favicon-wrap img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
         .dial-name {
-            font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.82);
-            max-width: 100%; padding: 0 6px;
+            font-size: 11.5px; font-weight: 400; color: rgba(255,255,255,0.78);
+            max-width: 100%; padding: 0 4px;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .dial-actions {
-            position: absolute; top: -7px; right: -7px; display: flex; gap: 4px;
-            opacity: 0; transition: opacity 0.15s ease; z-index: 2;
+            position: absolute; top: -6px; right: -6px; display: flex; gap: 4px;
+            opacity: 0; transition: opacity 0.15s ease; z-index: 3;
         }
         .dial-card:hover .dial-actions { opacity: 1; }
         .dial-btn {
-            width: 23px; height: 23px; border-radius: 50%; cursor: pointer;
-            background: rgba(5,8,15,0.82); border: 1px solid rgba(255,255,255,0.18);
-            color: rgba(255,255,255,0.85); font-size: 12px; line-height: 1;
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+            background: rgba(5,8,15,0.85); border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.85); font-size: 11px; line-height: 1;
             display: flex; align-items: center; justify-content: center;
             transition: border-color 0.15s, color 0.15s;
         }
         .dial-btn:hover { border-color: var(--accent); color: var(--accent); }
         .dial-btn.rm-pending { border-color: #ff6b81; color: #ff6b81; }
-        .dial-add {
-            border-style: dashed; border-color: rgba(255,255,255,0.22);
-            background: rgba(10,16,30,0.3); color: rgba(255,255,255,0.45);
-            cursor: pointer;
-        }
-        .dial-add:hover {
-            transform: translateY(-4px); color: var(--accent);
-            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-        }
-        .dial-add span { font-size: 26px; font-weight: 200; line-height: 1; }
 
-        #gems-wrap {
-            margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px;
-            max-width: min(760px, 94vw);
+        .dial-card.dragging { opacity: 0.35; }
+        .dial-card.drop-target .dial-favicon-wrap {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
         }
+
+        .dial-add { cursor: pointer; }
+        .dial-add .dial-favicon-wrap {
+            border-style: dashed; border-color: rgba(255,255,255,0.22);
+            background: rgba(10,16,30,0.3);
+        }
+        .dial-add .dial-favicon-wrap span { font-size: 26px; font-weight: 200; line-height: 1; color: rgba(255,255,255,0.45); }
+        .dial-add:hover .dial-favicon-wrap { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        .dial-add:hover .dial-favicon-wrap span { color: var(--accent); }
+
+        /* Hidden Gems */
         .gems-row {
-            display: flex; gap: 12px; max-width: 100%; overflow-x: auto;
+            display: flex; gap: 12px; overflow-x: auto;
             padding: 2px 2px 6px; scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.18) transparent;
         }
         .gems-row::-webkit-scrollbar { height: 5px; }
         .gems-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }
-        .gem-card { width: 74px; gap: 7px; }
-        .gem-card .dial-favicon-wrap { width: 38px; height: 38px; }
-        .gem-card .dial-name { font-size: 10.5px; color: rgba(255,255,255,0.68); }
+        .gem-card { flex: none; width: 58px; gap: 7px; }
+        .gem-card .dial-tile { width: 40px; height: 40px; }
+        .gem-card .dial-favicon-wrap { width: 40px; height: 40px; }
+        .gem-card .dial-name { font-size: 10px; color: rgba(255,255,255,0.68); }
 
+        /* Continue browsing */
+        .continue-list { display: flex; flex-direction: column; gap: 2px; }
+        .cont-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 7px 8px; border-radius: 10px;
+            cursor: pointer; text-decoration: none; color: #fff;
+            transition: background-color 0.15s;
+        }
+        .cont-row:hover { background: rgba(255,255,255,0.07); }
+        .cont-fav {
+            width: 26px; height: 26px; border-radius: 8px; flex: none;
+            background: rgba(255,255,255,0.08); position: relative;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .cont-fav img { position: absolute; width: 100%; height: 100%; object-fit: contain; }
+        .cont-fav .dial-letter { font-size: 13px; }
+        .cont-titles { flex: 1; min-width: 0; }
+        .cont-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cont-domain { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Notes */
+        .notes-input {
+            width: 100%; min-height: 110px; resize: vertical;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px; padding: 10px 12px;
+            color: #fff; font-size: 13px; font-family: inherit; outline: none; line-height: 1.5;
+        }
+        .notes-input:focus { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        .notes-input::placeholder { color: rgba(255,255,255,0.35); }
+
+        /* ── Dock & customize (Chrome puts Customize bottom-right) ─────── */
         .dock {
             position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 5;
             height: 54px; border-radius: 999px;
@@ -227,7 +301,7 @@
         .dock-item:hover svg { fill: #fff; }
 
         .icon-btn {
-            position: fixed; top: 18px; right: 18px; z-index: 20;
+            position: fixed; bottom: 18px; right: 18px; z-index: 20;
             width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
             transition: transform 0.15s, border-color 0.2s;
@@ -237,7 +311,7 @@
         .icon-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.75); }
 
         #customize-panel {
-            position: fixed; top: 68px; right: 18px; z-index: 19;
+            position: fixed; bottom: 68px; right: 18px; z-index: 19;
             width: 284px; max-height: calc(100vh - 96px); overflow-y: auto;
             padding: 18px; border-radius: var(--radius-lg);
             display: none;
@@ -317,21 +391,6 @@
             transition: opacity 0.25s ease, transform 0.25s ease;
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-        @media (max-height: 720px) {
-            #content { padding: 56px 24px 76px; }
-            .clock { font-size: clamp(50px, 8vw, 84px); }
-            .quote { display: none; }
-            .search-bar { margin-top: 22px; }
-            #dials-wrap { margin-top: 22px; }
-            .dock { bottom: 18px; }
-        }
-        @media (max-height: 620px) {
-            .date { display: none; }
-            .greeting { display: none; }
-            #dials-wrap { margin-top: 18px; }
-            #gems-wrap { display: none; }
-        }
     </style>
 </head>
 <body>
@@ -362,7 +421,12 @@
             <input type="text" class="cp-input" id="cp-name" maxlength="24" placeholder="Your name">
         </div>
         <div class="cp-section">
-            <label class="cp-toggle-row"><span>Daily quote</span><input type="checkbox" id="cp-quote" checked></label>
+            <span class="cp-label">Widgets</span>
+            <label class="cp-toggle-row"><span>Quote</span><input type="checkbox" id="cp-w-quote" checked></label>
+            <label class="cp-toggle-row"><span>Quick Access</span><input type="checkbox" id="cp-w-dials" checked></label>
+            <label class="cp-toggle-row"><span>Hidden Gems</span><input type="checkbox" id="cp-w-gems" checked></label>
+            <label class="cp-toggle-row"><span>Continue browsing</span><input type="checkbox" id="cp-w-continue" checked></label>
+            <label class="cp-toggle-row"><span>Notes</span><input type="checkbox" id="cp-w-notes" checked></label>
             <label class="cp-toggle-row"><span>Ambient aurora</span><input type="checkbox" id="cp-aurora"></label>
         </div>
         <button class="cp-btn danger" id="btn-reset">Reset to defaults</button>
@@ -384,20 +448,45 @@
             <span class="search-kbd" id="search-engine" title="Search engine">G</span>
         </div>
 
-        <div class="quote glass" id="quote">
-            <span class="q-mark">❝</span>
-            <span id="quote-text">Every day is a new beginning.</span>
-            <span class="q-author" id="quote-author"></span>
-        </div>
+        <div id="widget-grid">
+            <section class="widget glass" id="quote-card">
+                <div class="widget-head">
+                    <span class="widget-title">Quote</span>
+                    <button class="widget-btn" id="quote-next" title="Next quote">↻</button>
+                </div>
+                <div>
+                    <div class="quote-text" id="quote-text" title="Click to copy">Every day is a new beginning.</div>
+                    <div class="quote-author" id="quote-author"></div>
+                </div>
+            </section>
 
-        <div id="dials-wrap">
-            <div class="dials-label">Quick Access</div>
-            <div class="speed-dial" id="speed-dial"></div>
-        </div>
+            <section class="widget glass" id="dials-card">
+                <div class="widget-head">
+                    <span class="widget-title">Quick Access</span>
+                </div>
+                <div class="speed-dial" id="speed-dial"></div>
+            </section>
 
-        <div id="gems-wrap">
-            <div class="dials-label">Hidden Gems · free stuff &amp; VPNs</div>
-            <div class="gems-row" id="gems-row"></div>
+            <section class="widget glass" id="gems-card">
+                <div class="widget-head">
+                    <span class="widget-title">Hidden Gems · free stuff &amp; VPNs</span>
+                </div>
+                <div class="gems-row" id="gems-row"></div>
+            </section>
+
+            <section class="widget glass" id="continue-card">
+                <div class="widget-head">
+                    <span class="widget-title">Continue browsing</span>
+                </div>
+                <div class="continue-list" id="continue-list"></div>
+            </section>
+
+            <section class="widget glass" id="notes-card">
+                <div class="widget-head">
+                    <span class="widget-title">Notes</span>
+                </div>
+                <textarea class="notes-input" id="notes-input" placeholder="Write a quick note..."></textarea>
+            </section>
         </div>
     </main>
 
@@ -453,7 +542,27 @@
             ['Your only limit is your mind.'],
             ['Every day is a new beginning.'],
             ['Discipline is choosing what you want most over what you want now.'],
-            ['Less, but better.', 'Dieter Rams']
+            ['Less, but better.', 'Dieter Rams'],
+            ['The only way to do great work is to love what you do.', 'Steve Jobs'],
+            ['Stay hungry, stay foolish.', 'Steve Jobs'],
+            ['In the middle of difficulty lies opportunity.', 'Albert Einstein'],
+            ["Life is what happens when you're busy making other plans.", 'John Lennon'],
+            ['The future belongs to those who believe in the beauty of their dreams.', 'Eleanor Roosevelt'],
+            ['Success is not final, failure is not fatal: it is the courage to continue that counts.', 'Winston Churchill'],
+            ["Whether you think you can or you think you can't, you're right.", 'Henry Ford'],
+            ['It does not matter how slowly you go as long as you do not stop.', 'Confucius'],
+            ['Everything you can imagine is real.', 'Pablo Picasso'],
+            ['The only impossible journey is the one you never begin.', 'Tony Robbins'],
+            ['What we achieve inwardly will change outer reality.', 'Plutarch'],
+            ['Quality is not an act, it is a habit.', 'Aristotle'],
+            ['Turn your wounds into wisdom.', 'Oprah Winfrey'],
+            ['Do what you feel in your heart to be right.', 'Eleanor Roosevelt'],
+            ['Happiness is not something ready made. It comes from your own actions.', 'Dalai Lama'],
+            ['The best time to plant a tree was 20 years ago. The second best time is now.', 'Chinese Proverb'],
+            ['An unexamined life is not worth living.', 'Socrates'],
+            ['Act as if what you do makes a difference. It does.', 'William James'],
+            ['Little by little, one travels far.', 'J.R.R. Tolkien'],
+            ['Don\'t watch the clock; do what it does. Keep going.', 'Sam Levenson']
         ];
         var DEFAULT_DIALS = [
             { name: 'Google', url: 'https://www.google.com', domain: 'google.com' },
@@ -478,6 +587,7 @@
             { name: 'Web Academy', url: 'https://portswigger.net/web-security', blurb: 'free ethical-hacking & security training' },
             { name: 'CryptPad', url: 'https://cryptpad.fr', blurb: 'private, end-to-end encrypted docs, sheets and pads' }
         ];
+        var WIDGETS = ['quote', 'dials', 'gems', 'continue', 'notes'];
         var DEFAULTS = {
             bgType: 'gradient',
             bgIndex: 0,
@@ -486,8 +596,9 @@
             blur: 16,
             accent: '#38d9ff',
             name: 'Shiva',
-            showQuote: true,
             aurora: false,
+            quoteIndex: null,
+            widgets: { quote: true, dials: true, gems: true, continue: true, notes: true },
             dials: DEFAULT_DIALS
         };
         var state;
@@ -496,6 +607,7 @@
         var pendingRemove = null;
         var pendingRemoveTimer = null;
         var toastTimer = null;
+        var dragIndex = null;
 
         function loadState() {
             var s = null;
@@ -514,7 +626,13 @@
             }
             state = {};
             for (var k in DEFAULTS) state[k] = DEFAULTS[k];
-            for (var k2 in s) if (s[k2] !== undefined && s[k2] !== null) state[k2] = s[k2];
+            for (var k2 in s) if (s[k2] !== undefined && s[k2] !== null && k2 !== 'widgets') state[k2] = s[k2];
+            state.widgets = {};
+            for (var w in DEFAULTS.widgets) state.widgets[w] = DEFAULTS.widgets[w];
+            if (s.widgets && typeof s.widgets === 'object') {
+                for (var w2 in s.widgets) if (s.widgets[w2] !== undefined) state.widgets[w2] = s.widgets[w2];
+            }
+            if (s.showQuote === false && state.widgets.quote === undefined) state.widgets.quote = false;
             if (state.bgType === 'gradient') state.bgIndex = Math.min(Math.max(state.bgIndex | 0, 0), GRADIENTS.length - 1);
             if (!Array.isArray(state.dials)) state.dials = DEFAULT_DIALS.slice();
             if (state.dials.length > 8) state.dials = state.dials.slice(0, 8);
@@ -524,13 +642,19 @@
             try { localStorage.setItem('black_nt_state', JSON.stringify(state)); } catch (e) {}
         }
 
+        function applyWidgetVisibility() {
+            WIDGETS.forEach(function (key) {
+                document.body.classList.toggle('widget-off-' + key, state.widgets[key] === false);
+            });
+        }
+
         function applyState() {
             var root = document.documentElement.style;
             root.setProperty('--accent', state.accent);
             root.setProperty('--dim', String(state.dim));
             root.setProperty('--glass-blur', state.blur + 'px');
             document.body.classList.toggle('aurora', state.aurora && !reduceMotion);
-            document.body.classList.toggle('no-quote', !state.showQuote);
+            applyWidgetVisibility();
             var bg = $('bg');
             if (state.bgType === 'image' && state.bgVal) {
                 bg.style.backgroundImage = 'url("' + state.bgVal + '")';
@@ -541,12 +665,13 @@
             renderAccents();
             renderDials();
             renderGems();
+            renderContinue();
             $('slider-dim').value = Math.round(state.dim * 100);
             $('slider-blur').value = state.blur;
             $('cp-name').value = state.name;
-            $('cp-quote').checked = state.showQuote;
             $('cp-aurora').checked = state.aurora;
             $('cp-aurora').disabled = reduceMotion;
+            WIDGETS.forEach(function (key) { $('cp-w-' + key).checked = state.widgets[key] !== false; });
             renderQuote();
             updateTime();
         }
@@ -586,10 +711,15 @@
             });
         }
 
-        function renderQuote() {
+        function dailyQuoteIndex() {
             var now = new Date();
             var dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-            var q = QUOTES[dayOfYear % QUOTES.length];
+            return dayOfYear % QUOTES.length;
+        }
+
+        function renderQuote() {
+            var idx = state.quoteIndex == null ? dailyQuoteIndex() : state.quoteIndex % QUOTES.length;
+            var q = QUOTES[idx];
             $('quote-text').textContent = q[0];
             $('quote-author').textContent = q[1] ? '— ' + q[1] : '';
         }
@@ -615,13 +745,36 @@
             return (name || '?').charAt(0).toUpperCase();
         }
 
+        function faviconSrc(url) {
+            return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domainOf(url)) + '&sz=64';
+        }
+
+        function makeFavicon(url, letter, cls) {
+            var iconWrap = document.createElement('div');
+            iconWrap.className = cls || 'dial-favicon-wrap';
+            var letterEl = document.createElement('span');
+            letterEl.className = 'dial-letter';
+            letterEl.textContent = letterOf(letter || domainOf(url));
+            var img = document.createElement('img');
+            img.alt = '';
+            img.loading = 'lazy';
+            img.onerror = function () { this.style.display = 'none'; };
+            img.src = faviconSrc(url);
+            iconWrap.appendChild(letterEl);
+            iconWrap.appendChild(img);
+            return iconWrap;
+        }
+
         function renderDials() {
             var wrap = $('speed-dial');
             wrap.innerHTML = '';
             state.dials.forEach(function (d, i) {
                 var card = document.createElement('div');
-                card.className = 'dial-card glass';
+                card.className = 'dial-card';
                 card.title = d.url;
+
+                var tile = document.createElement('div');
+                tile.className = 'dial-tile';
                 var actions = document.createElement('div');
                 actions.className = 'dial-actions';
                 var ed = document.createElement('button');
@@ -642,24 +795,16 @@
                 });
                 actions.appendChild(ed);
                 actions.appendChild(rm);
-                var iconWrap = document.createElement('div');
-                iconWrap.className = 'dial-favicon-wrap';
-                var letter = document.createElement('span');
-                letter.className = 'dial-letter';
-                letter.textContent = letterOf(d.name);
-                var img = document.createElement('img');
-                img.alt = '';
-                img.loading = 'lazy';
-                img.onerror = function () { this.style.display = 'none'; };
-                img.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d.domain || domainOf(d.url)) + '&sz=64';
-                iconWrap.appendChild(letter);
-                iconWrap.appendChild(img);
+                tile.appendChild(makeFavicon(d.url, d.name));
+                tile.appendChild(actions);
+
                 var name = document.createElement('div');
                 name.className = 'dial-name';
                 name.textContent = d.name;
-                card.appendChild(actions);
-                card.appendChild(iconWrap);
+
+                card.appendChild(tile);
                 card.appendChild(name);
+
                 card.addEventListener('click', function () {
                     window.location.href = d.url;
                 });
@@ -667,14 +812,64 @@
                     if (e.key === 'Enter') window.location.href = d.url;
                 });
                 card.tabIndex = 0;
+
+                // Chrome-style drag-to-reorder
+                card.setAttribute('draggable', 'true');
+                card.addEventListener('dragstart', function (e) {
+                    dragIndex = i;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    try { e.dataTransfer.setData('text/plain', 'dial'); } catch (_) {}
+                });
+                card.addEventListener('dragover', function (e) {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    this.classList.add('drop-target');
+                });
+                card.addEventListener('dragleave', function () {
+                    this.classList.remove('drop-target');
+                });
+                card.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.remove('drop-target');
+                    if (dragIndex === null) return;
+                    var to = state.dials.indexOf(d);
+                    if (to === -1) return;
+                    if (dragIndex !== to) {
+                        var item = state.dials.splice(dragIndex, 1)[0];
+                        state.dials.splice(to, 0, item);
+                        saveState();
+                    }
+                    dragIndex = null;
+                    renderDials();
+                });
+                card.addEventListener('dragend', function () {
+                    dragIndex = null;
+                    var all = wrap.querySelectorAll('.dial-card.dragging, .dial-card.drop-target');
+                    for (var n = 0; n < all.length; n++) {
+                        all[n].classList.remove('dragging', 'drop-target');
+                    }
+                });
+
                 wrap.appendChild(card);
             });
-            var add = document.createElement('div');
-            add.className = 'dial-card glass dial-add';
-            add.title = 'Add shortcut';
-            add.innerHTML = '<span>+</span>';
-            add.addEventListener('click', function () { openEditor(null); });
-            if (state.dials.length < 8) wrap.appendChild(add);
+            if (state.dials.length < 8) {
+                var add = document.createElement('div');
+                add.className = 'dial-card dial-add';
+                add.title = 'Add shortcut';
+                var addTile = document.createElement('div');
+                addTile.className = 'dial-tile';
+                var addCircle = document.createElement('div');
+                addCircle.className = 'dial-favicon-wrap';
+                var plus = document.createElement('span');
+                plus.textContent = '+';
+                addCircle.appendChild(plus);
+                addTile.appendChild(addCircle);
+                add.appendChild(addTile);
+                add.addEventListener('click', function () { openEditor(null); });
+                wrap.appendChild(add);
+            }
         }
 
         function renderGems() {
@@ -682,30 +877,62 @@
             wrap.innerHTML = '';
             HIDDEN_GEMS.forEach(function (g) {
                 var card = document.createElement('div');
-                card.className = 'dial-card glass gem-card';
+                card.className = 'dial-card gem-card';
                 card.title = g.blurb;
-                var iconWrap = document.createElement('div');
-                iconWrap.className = 'dial-favicon-wrap';
-                var letter = document.createElement('span');
-                letter.className = 'dial-letter';
-                letter.textContent = letterOf(g.name);
-                var img = document.createElement('img');
-                img.alt = '';
-                img.loading = 'lazy';
-                img.onerror = function () { this.style.display = 'none'; };
-                img.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domainOf(g.url)) + '&sz=64';
-                iconWrap.appendChild(letter);
-                iconWrap.appendChild(img);
+                var tile = document.createElement('div');
+                tile.className = 'dial-tile';
+                tile.appendChild(makeFavicon(g.url, g.name));
                 var name = document.createElement('div');
                 name.className = 'dial-name';
                 name.textContent = g.name;
-                card.appendChild(iconWrap);
+                card.appendChild(tile);
                 card.appendChild(name);
                 card.addEventListener('click', function () { window.location.href = g.url; });
                 card.addEventListener('keydown', function (e) { if (e.key === 'Enter') window.location.href = g.url; });
                 card.tabIndex = 0;
                 wrap.appendChild(card);
             });
+        }
+
+        function renderContinue() {
+            var card = $('continue-card');
+            var wrap = $('continue-list');
+            wrap.innerHTML = '';
+            if (!window.api || !window.api.loadHistory) { card.classList.add('no-data'); return; }
+            window.api.loadHistory().then(function (hist) {
+                if (!Array.isArray(hist) || !hist.length) { card.classList.add('no-data'); return; }
+                var seen = {};
+                var rows = [];
+                for (var i = 0; i < hist.length && rows.length < 6; i++) {
+                    var h = hist[i];
+                    if (!h || !h.url || seen[h.url] || !/^https?:\/\//.test(h.url)) continue;
+                    seen[h.url] = 1;
+                    rows.push(h);
+                }
+                if (!rows.length) { card.classList.add('no-data'); return; }
+                card.classList.remove('no-data');
+                rows.forEach(function (h) {
+                    var row = document.createElement('div');
+                    row.className = 'cont-row';
+                    var fav = makeFavicon(h.url, h.title || domainOf(h.url), 'cont-fav');
+                    var titles = document.createElement('div');
+                    titles.className = 'cont-titles';
+                    var t = document.createElement('div');
+                    t.className = 'cont-title';
+                    t.textContent = h.title || domainOf(h.url);
+                    var d = document.createElement('div');
+                    d.className = 'cont-domain';
+                    d.textContent = domainOf(h.url);
+                    titles.appendChild(t);
+                    titles.appendChild(d);
+                    row.appendChild(fav);
+                    row.appendChild(titles);
+                    row.addEventListener('click', function () { window.location.href = h.url; });
+                    row.addEventListener('keydown', function (e) { if (e.key === 'Enter') window.location.href = h.url; });
+                    row.tabIndex = 0;
+                    wrap.appendChild(row);
+                });
+            }).catch(function () { card.classList.add('no-data'); });
         }
 
         function openEditor(index) {
@@ -863,6 +1090,30 @@
             }
         });
 
+        $('quote-next').addEventListener('click', function () {
+            var base = state.quoteIndex == null ? dailyQuoteIndex() : state.quoteIndex;
+            state.quoteIndex = (base + 1) % QUOTES.length;
+            saveState();
+            renderQuote();
+        });
+
+        $('quote-text').addEventListener('click', function () {
+            var full = $('quote-text').textContent;
+            var author = $('quote-author').textContent;
+            if (author) full += ' ' + author;
+            var done = function () { toast('Quote copied'); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(full).then(done).catch(function () { toast('Copy unavailable'); });
+            } else {
+                toast('Copy unavailable');
+            }
+        });
+
+        $('notes-input').addEventListener('input', function () {
+            try { localStorage.setItem('black_nt_notes', this.value); } catch (e) {}
+        });
+        try { $('notes-input').value = localStorage.getItem('black_nt_notes') || ''; } catch (e) {}
+
         document.querySelectorAll('.dock-item[data-panel]').forEach(function (el) {
             el.addEventListener('click', function () {
                 if (window.api && window.api.openPanel) window.api.openPanel(el.dataset.panel);
@@ -896,20 +1147,24 @@
             updateTime();
             saveState();
         });
-        $('cp-quote').addEventListener('change', function () {
-            state.showQuote = this.checked;
-            document.body.classList.toggle('no-quote', !state.showQuote);
-            saveState();
-        });
         $('cp-aurora').addEventListener('change', function () {
             state.aurora = this.checked;
             document.body.classList.toggle('aurora', state.aurora && !reduceMotion);
             saveState();
         });
+        WIDGETS.forEach(function (key) {
+            $('cp-w-' + key).addEventListener('change', function () {
+                state.widgets[key] = this.checked;
+                saveState();
+                applyWidgetVisibility();
+            });
+        });
         $('btn-reset').addEventListener('click', function () {
             state = {};
             for (var k in DEFAULTS) state[k] = DEFAULTS[k];
             state.dials = DEFAULT_DIALS.slice();
+            state.widgets = {};
+            for (var w in DEFAULTS.widgets) state.widgets[w] = DEFAULTS.widgets[w];
             saveState();
             applyState();
             toast('Defaults restored');

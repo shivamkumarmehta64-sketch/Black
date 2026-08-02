@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld('api', {
   // ── Navigation ──
   navigateRequest:  (tabId, url) => ipcRenderer.invoke('navigate-request', tabId, url),
 
+  // ── Popups: page window.open / target=_blank → new tab in host window ──
+  onOpenInTab:      (cb)         => ipcRenderer.on('open-in-tab', (_e, url) => cb(url)),
+
   // ── Shell: open external URLs in system browser (AI chat, links) ──
   openExternal:     (url)        => ipcRenderer.invoke('open-external', url),
 

@@ -1230,6 +1230,27 @@ app.whenReady().then(() => {
     });
   });
 
+  // ── POPUP HANDLER: target=_blank / window.open → open in a new tab ───────
+  // Webviews carry allowpopups so window.open works, but without a handler the
+  // URL would open in a tiny default Electron popup window. Intercept every
+  // popup and route it back to the host window's tab strip instead.
+  app.on('web-contents-created', (_ev, wc) => {
+    if (wc.getType() === 'webview') {
+      wc.setWindowOpenHandler(({ url }) => {
+        try {
+          if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
+            const win = BrowserWindow.fromWebContents(wc);
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('open-in-tab', url);
+            }
+          }
+        } catch (e) {}
+        return { action: 'deny' };
+      });
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ── Crash recovery & memory guard (multi-tab stability) ─────────────────
   // If the browser UI itself crashes, bring it back with a reload (session is
   // persisted, tabs are restored from session.json).

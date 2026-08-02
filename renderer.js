@@ -2245,6 +2245,9 @@ document.querySelectorAll('[data-close]').forEach(el => {
             if (p === 'settings') openSettings();
             else openSidebarView(p);
         });
+        window.api.onOpenInTab((url) => {
+            if (typeof url === 'string' && url.startsWith('http')) createTab(url);
+        });
         window.api.onDownloadStart((d) => {
             downloads.unshift(Object.assign({}, d, { progress: 0, state: 'downloading' }));
             refreshDownloadsPanel();

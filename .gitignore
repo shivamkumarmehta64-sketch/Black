@@ -3,3 +3,5 @@ dist/
 *.pfx
 *.log
 .DS_Store
+stderr.txt
+stdout.txt
