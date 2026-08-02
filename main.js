@@ -9,6 +9,11 @@ let blockedCount = 0;
 let windowCascadeCount = 0;
 let pendingUrl = null;
 
+// Dev/testing override: run with an isolated profile via BLACK_USER_DATA
+if (process.env.BLACK_USER_DATA) {
+  try { app.setPath('userData', process.env.BLACK_USER_DATA); } catch (e) {}
+}
+
 // Extract a web URL from a command line (Windows passes "Black.exe <url>"
 // when Black is chosen as the browser / default protocol handler).
 function urlFromArgv(argv = []) {
@@ -496,28 +501,7 @@ app.whenReady().then(() => {
     blocks: advisorBlocks
   }));
   // Check every main-frame navigation; dangerous pages go to the warning page
-  session.defaultSession.webRequest.onBeforeRequest(
-    { urls: ['http://*/*', 'https://*/*'] },
-    (details, callback) => {
-      if (details.resourceType !== 'mainFrame') { callback({}); return; }
-      advisorChecks++;
-      if (advisorBypassed.has(details.url)) { callback({}); return; }
-      const hit = advisorBlockUrl(details.url);
-      if (hit) {
-        advisorBlocks++;
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('advisor-blocked', { url: details.url, category: hit.category, rule: hit.rule });
-        }
-        callback({
-          redirectURL: 'black-ui://warning?url=' + encodeURIComponent(details.url) +
-                       '&cat=' + encodeURIComponent(hit.category) +
-                       '&rule=' + encodeURIComponent(hit.rule)
-        });
-        return;
-      }
-      callback({});
-    }
-  );
+  // (handled inside the consolidated webRequest listener registered below)
 
   // ── OSINT SELF-CHECK TOOLS (free, no API keys, privacy-first) ────────────
   // pwned-range: k-anonymity check against the Pwned Passwords API — only the
@@ -582,15 +566,26 @@ app.whenReady().then(() => {
   let shieldsReady = false;
   let shieldsEnabled = true;
   let shieldsRulesCount = 0;
+  let shieldsCosmeticCount = 0;
+  let shieldsListsLoaded = 0;
   let shieldsChecks = 0;
   let shieldsBlocks = 0;
   const shieldsPending = [];
+  const shieldsCosmeticPending = new Map();
+  const shieldsCosmeticCache = new Map();
+  let shieldsCosmeticId = 0;
 
   function shieldsExePath() {
     const prod = path.join(process.resourcesPath, 'native_engine', 'black_shields.exe');
     const dev = path.join(__dirname, 'native_engine', 'black_shields.exe');
     if (fs.existsSync(prod)) return prod;
     return dev;
+  }
+
+  function shieldsListsDir() {
+    const prod = path.join(process.resourcesPath, 'native_engine', 'lists');
+    if (fs.existsSync(prod)) return prod;
+    return path.join(__dirname, 'native_engine', 'lists');
   }
 
   function startShieldsEngine() {
@@ -610,9 +605,24 @@ app.whenReady().then(() => {
       if (line.startsWith('STATS\t')) {
         const parts = line.split('\t');
         shieldsRulesCount = parseInt(parts[1], 10) || 0;
+        shieldsCosmeticCount = parseInt(parts[2], 10) || 0;
         return;
       }
       if (line === 'PONG') { shieldsReady = true; return; }
+      if (line.startsWith('LISTED\t')) {
+        shieldsListsLoaded++;
+        return;
+      }
+      if (line.startsWith('COSM\t')) {
+        const parts = line.split('\t');
+        const id = parseInt(parts[1], 10);
+        const cb = shieldsCosmeticPending.get(id);
+        if (cb) {
+          shieldsCosmeticPending.delete(id);
+          cb(parts.slice(3));
+        }
+        return;
+      }
       const resolver = shieldsPending.shift();
       if (!resolver) return;
       if (line.startsWith('BLOCK\t')) {
@@ -629,20 +639,42 @@ app.whenReady().then(() => {
     shieldsProc.on('error', () => { shieldsReady = false; });
     shieldsProc.on('exit', () => { shieldsReady = false; });
     shieldsProc.stdin.write('PING\n');
+    const listsDir = shieldsListsDir();
+    const easylist = path.join(listsDir, 'easylist.txt');
+    const easyprivacy = path.join(listsDir, 'easyprivacy.txt');
+    if (fs.existsSync(easylist)) shieldsProc.stdin.write(`LIST\tadvertising\t${easylist}\n`);
+    if (fs.existsSync(easyprivacy)) shieldsProc.stdin.write(`LIST\ttracking\t${easyprivacy}\n`);
     shieldsProc.stdin.write('STATS\n');
     if (process.env.NODE_ENV === 'development') console.log('[Black] Native shields engine started (C++)');
   }
 
-  function shieldsCheck(url, type) {
+  function shieldsCheck(url, type, site) {
     return new Promise((resolve) => {
       if (!shieldsReady || !shieldsEnabled || !shieldsProc) return resolve({ blocked: false });
       shieldsChecks++;
       shieldsPending.push(resolve);
-      shieldsProc.stdin.write(`CHECK\t${type}\t${url}\n`);
+      shieldsProc.stdin.write(`CHECK\t${type}\t${url}\t${site}\n`);
       setTimeout(() => {
         const idx = shieldsPending.indexOf(resolve);
         if (idx > -1) { shieldsPending.splice(idx, 1); resolve({ blocked: false }); }
       }, 200);
+    });
+  }
+
+  function shieldsCosmetics(site) {
+    return new Promise((resolve) => {
+      if (!shieldsReady || !shieldsEnabled || !shieldsProc) return resolve([]);
+      const cached = shieldsCosmeticCache.get(site);
+      if (cached) return resolve(cached);
+      const id = ++shieldsCosmeticId;
+      shieldsCosmeticPending.set(id, (sels) => {
+        shieldsCosmeticCache.set(site, sels);
+        resolve(sels);
+      });
+      shieldsProc.stdin.write(`COSMETIC\t${id}\t${site}\n`);
+      setTimeout(() => {
+        if (shieldsCosmeticPending.delete(id)) resolve([]);
+      }, 500);
     });
   }
 
@@ -657,6 +689,69 @@ app.whenReady().then(() => {
   }
 
   startShieldsEngine();
+
+  // ── uBO ENGINE (Ghostery/adblocker — the uBlock Origin engine) ──────────
+  // Primary network filter: synchronous in-process matching (no IPC, no
+  // per-request latency). Loads uBlock Origin lists (ublock-filters, unbreak,
+  // easylist, easyprivacy, ...) with an on-disk serialized cache. The C++
+  // engine above stays as fallback (and keeps serving cosmetic filters).
+  let uboBlocker = null;
+  let uboReady = false;
+  let uboRulesCount = 0;
+
+  async function startUboEngine() {
+    try {
+      const { ElectronBlocker, fullLists } = require('@ghostery/adblocker-electron');
+      const cachePath = path.join(app.getPath('userData'), 'engine.bin');
+      const config = {
+        enableCompression: true,
+        loadNetworkFilters: true,
+        loadCosmeticFilters: false,
+        loadExceptionFilters: true,
+        loadPreprocessors: true
+      };
+      const caching = {
+        path: cachePath,
+        read: async (p) => {
+          if (!fs.existsSync(p)) throw new Error('no cached engine');
+          return new Uint8Array(fs.readFileSync(p));
+        },
+        write: async (p, b) => { try { fs.writeFileSync(p, Buffer.from(b)); } catch (e) {} }
+      };
+      const blocker = await ElectronBlocker.fromLists(fetch, fullLists, config, caching);
+      uboBlocker = blocker;
+      uboRulesCount = blocker.getFilters().networkFilters.length;
+      uboReady = true;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Black] uBO engine ready (${uboRulesCount} network filters)`);
+      }
+      // Zero-maintenance list updates: silently re-fetch fresh uBO lists in
+      // the background when the cached engine is older than 24h, then daily.
+      // A failed refresh leaves the current engine untouched.
+      const refresh = async () => {
+        try {
+          const b = await ElectronBlocker.fromLists(fetch, fullLists, config, {
+            path: cachePath,
+            read: async () => { throw new Error('no cache'); },
+            write: caching.write
+          });
+          uboBlocker = b;
+          uboRulesCount = b.getFilters().networkFilters.length;
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Black] uBO lists refreshed (${uboRulesCount} network filters)`);
+          }
+        } catch (e) {}
+      };
+      const stale = fs.existsSync(cachePath) && (Date.now() - fs.statSync(cachePath).mtimeMs) > 24 * 3600 * 1000;
+      if (stale) setTimeout(refresh, 30000);
+      setInterval(refresh, 24 * 3600 * 1000);
+    } catch (e) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Black] uBO engine failed to start, C++ engine remains active:', e.message);
+      }
+    }
+  }
+  startUboEngine();
 
   // Honor persisted shields preference (settings.json → shields: false)
   try {
@@ -676,8 +771,9 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('shields-status', () => ({
-    engine: shieldsReady ? 'native' : 'fallback',
-    rules: shieldsRulesCount,
+    engine: uboReady ? 'ubo' : (shieldsReady ? 'native' : 'fallback'),
+    rules: uboReady ? uboRulesCount : shieldsRulesCount,
+    cosmetic: shieldsCosmeticCount,
     checks: shieldsChecks,
     blocks: shieldsBlocks,
     enabled: shieldsEnabled
@@ -694,73 +790,184 @@ app.whenReady().then(() => {
     return shieldsEnabled;
   });
   // ─────────────────────────────────────────────────────────────────────────
+  // Single consolidated webRequest listener (advisor + adblock + HTTPS upgrade).
+  // Electron's webRequest API honors only one listener per event, so all
+  // filtering lives here.
 
-  // YouTube ad URL blocking
-  session.defaultSession.webRequest.onBeforeRequest(
-    { urls: [
-      '*://*.doubleclick.net/*',
-      '*://*.googlesyndication.com/*',
-      '*://*.googleadservices.com/*',
-      '*://*.googletagservices.com/*',
-      '*://*.googletagmanager.com/*',
-      '*://*.google-analytics.com/*',
-      '*://*.g.doubleclick.net/*',
-      '*://*/pagead/*',
-      '*://*/pagead2/*',
-      '*://*/pubads.g.doubleclick.net/*',
-      '*://*.youtube.com/api/stats/ads*',
-      '*://*.youtube.com/ptracking*',
-      '*://*.youtube.com/pagead/*',
-      '*://*.youtube.com/get_midroll_info*',
-      '*://*.youtube.com/youtubei/v1/AdTrailer*',
-      '*://*.taboola.com/*',
-      '*://*.outbrain.com/*',
-      '*://*.scorecardresearch.com/*',
-      '*://*.criteo.com/*',
-      '*://*.criteo.net/*',
-      '*://*.amazon-adsystem.com/*',
-      '*://*.adnxs.com/*',
-      '*://*.adsrvr.org/*',
-      '*://*.adservice.google.com/*',
-      '*://*.adserver.yahoo.com/*',
-      '*://*.advertising.com/*',
-      '*://*.adzerk.net/*',
-      '*://*.adsafeprotected.com/*',
-      '*://*.moatads.com/*',
-      '*://*.sharethrough.com/*',
-      '*://*.indexww.com/*',
-      '*://*.pubmatic.com/*',
-      '*://*.openx.net/*',
-      '*://*.rubiconproject.com/*',
-      '*://*.appnexus.com/*',
-      '*://*.casalemedia.com/*',
-      '*://*.contextweb.com/*',
-      '*://*.onetag.com/*',
-      '*://*.criteo.com/*',
-      '*://*.criteo.net/*',
-      '*://*.ads.linkedin.com/*',
-      '*://*.ads.facebook.com/*',
-      '*://*.ads.yahoo.com/*',
-      '*://*.analytics.yahoo.com/*',
-      '*://*.ads.youtube.com/*',
-      '*://*.googlesyndication.com/*',
-      '*://*.xiti.com/*',
-      '*://*.at.atwola.com/*',
-      '*://*.adserver.adtechus.com/*',
-      '*://*.adserver.adtech.de/*',
-      '*://*.ad.doubleclick.net/*',
-      '*://*.adclick.g.doubleclick.net/*'
-    ] },
-    (details, callback) => {
-      // Government domains are exempt — portals must never be broken by ad filtering
-      if (isGovUrl(details)) { callback({ cancel: false }); return; }
-      blockedCount++;
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('blocked-count', blockedCount);
+  // Known ad/telemetry hosts (suffix match) + YouTube ad endpoint substrings.
+  // Base list = proven ytube/mtube client set (doubleclick, googlesyndication,
+  // googleadservices, 2mdn.net, moatads, etc.) extended with more trackers.
+  const blockedAdHosts = [
+    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+    '2mdn.net', 'googletagservices.com', 'googletagmanager.com',
+    'google-analytics.com', 'adservice.google.com', 'adservice.google.co.in',
+    'taboola.com', 'outbrain.com', 'scorecardresearch.com', 'criteo.com',
+    'criteo.net', 'amazon-adsystem.com', 'adnxs.com', 'adsrvr.org',
+    'adserver.yahoo.com', 'advertising.com', 'adzerk.net',
+    'adsafeprotected.com', 'moatads.com', 'sharethrough.com',
+    'indexww.com', 'pubmatic.com', 'openx.net', 'rubiconproject.com',
+    'appnexus.com', 'casalemedia.com', 'contextweb.com', 'onetag.com',
+    'ads.linkedin.com', 'ads.facebook.com', 'ads.yahoo.com',
+    'analytics.yahoo.com', 'ads.youtube.com', 'xiti.com', 'at.atwola.com',
+    'adserver.adtechus.com', 'adserver.adtech.de',
+    'hotjar.com', 'mixpanel.com', 'bat.bing.com', 'demdex.net',
+    'bluekai.com', 'connect.facebook.net', 'an.facebook.com'
+  ];
+  const blockedAdPathSubstrs = [
+    '/pagead/', '/pagead2/', '/pubads.g.doubleclick.net/',
+    '/api/stats/ads', '/ptracking', '/get_midroll_info',
+    '/youtubei/v1/AdTrailer'
+  ];
+
+  function siteForRequest(details) {
+    try {
+      if (details.webContentsId) {
+        const wc = webContents.fromId(details.webContentsId);
+        if (wc && !wc.isDestroyed()) {
+          const host = new URL(wc.getURL()).hostname.toLowerCase();
+          if (host) return host;
+        }
       }
-      callback({ cancel: true });
+    } catch (e) {}
+    try {
+      const ref = new URL(details.referrer).hostname.toLowerCase();
+      if (ref) return ref;
+    } catch (e) {}
+    return '';
+  }
+
+  function passOrUpgrade(details, callback) {
+    // HTTPS everywhere: auto-upgrade plain http to https
+    if (details.url.startsWith('http://')) {
+      try {
+        const url = new URL(details.url);
+        if (!url.port && !url.hostname.includes('localhost') && !url.hostname.includes('127.0.0.1')) {
+          url.protocol = 'https:';
+          callback({ redirectURL: url.toString() });
+          return;
+        }
+      } catch (e) {}
+    }
+    callback({ cancel: false });
+  }
+
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: ['*://*/*'] },
+    (details, callback) => {
+      // ── Safety advisor: dangerous main-frame navigations → warning page
+      if (details.resourceType === 'mainFrame') {
+        advisorChecks++;
+        if (!advisorBypassed.has(details.url)) {
+          const hit = advisorBlockUrl(details.url);
+          if (hit) {
+            advisorBlocks++;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('advisor-blocked', { url: details.url, category: hit.category, rule: hit.rule });
+            }
+            callback({
+              redirectURL: 'black-ui://warning?url=' + encodeURIComponent(details.url) +
+                           '&cat=' + encodeURIComponent(hit.category) +
+                           '&rule=' + encodeURIComponent(hit.rule)
+            });
+            return;
+          }
+        }
+      }
+
+      // ── Government domains are exempt — portals must never be broken by ad filtering
+      if (isGovUrl(details)) { passOrUpgrade(details, callback); return; }
+
+      const type = details.resourceType;
+
+      // ── Fast static layer: well-known ad/telemetry hosts + YouTube ad endpoints
+      let host = '';
+      try { host = new URL(details.url).hostname.toLowerCase(); } catch (e) {}
+      let staticBlocked = false;
+      if (host) {
+        for (const d of blockedAdHosts) {
+          if (host === d || host.endsWith('.' + d)) { staticBlocked = true; break; }
+        }
+      }
+      if (!staticBlocked) {
+        const u = details.url.toLowerCase();
+        for (const p of blockedAdPathSubstrs) {
+          if (u.includes(p)) { staticBlocked = true; break; }
+        }
+      }
+      if (staticBlocked) {
+        if (process.env.NODE_ENV === 'development') console.log(`[StaticBlock] ${type} ${details.url.slice(0, 140)}`);
+        blockedCount++;
+        shieldsBlocks++;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('blocked-count', blockedCount);
+        }
+        callback({ cancel: true });
+        return;
+      }
+
+      // ── Filtering engine layer: uBO engine (primary) or C++ engine (fallback) ──
+      // uBO matching is synchronous and in-process; YouTube is NOT exempted —
+      // uBO's YouTube rules are battle-tested (ad endpoints only, never
+      // player-critical streams). C++ engine remains the fallback and still
+      // provides cosmetic filters.
+      const siteHost = siteForRequest(details);
+      if (uboReady && uboBlocker && shieldsEnabled) {
+        shieldsChecks++;
+        uboBlocker.onBeforeRequest(details, (resp) => {
+          if (resp && resp.cancel) {
+            if (process.env.NODE_ENV === 'development') console.log(`[Block] ${type} ${details.url.slice(0, 140)} (uBO) site=${siteHost}`);
+            blockedCount++;
+            shieldsBlocks++;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('blocked-count', blockedCount);
+            }
+            callback({ cancel: true });
+          } else if (resp && resp.redirectURL) {
+            callback({ redirectURL: resp.redirectURL });
+          } else {
+            passOrUpgrade(details, callback);
+          }
+        });
+      } else if (shieldsReady && shieldsEnabled && shieldsProc) {
+        shieldsCheck(details.url, shieldsResourceType(type), siteHost).then((r) => {
+          if (r.blocked) {
+            if (process.env.NODE_ENV === 'development') console.log(`[Block] ${type} ${details.url.slice(0, 140)} (${r.category}: ${r.rule}) site=${siteHost}`);
+            blockedCount++;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('blocked-count', blockedCount);
+            }
+            callback({ cancel: true });
+          } else {
+            passOrUpgrade(details, callback);
+          }
+        });
+      } else {
+        passOrUpgrade(details, callback);
+      }
     }
   );
+
+  // Cosmetic (element-hiding) filtering: inject hide rules on page load
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('dom-ready', () => {
+      if (wc.isDestroyed()) return;
+      const type = wc.getType();
+      let host = '';
+      try { host = new URL(wc.getURL()).hostname.toLowerCase(); } catch (err) {}
+      if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] dom-ready type=${type} host=${host}`);
+      if (type !== 'webview' && type !== 'window') return;
+      if (!host || host === 'localhost' || host === '127.0.0.1' || isGovDomain('https://' + host)) return;
+      shieldsCosmetics(host).then((sels) => {
+        if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] ${host} sels=${sels.length}`);
+        if (wc.isDestroyed() || !sels.length) return;
+        const unique = Array.from(new Set(sels));
+        const css = unique.join(',') + '{display:none!important}';
+        wc.insertCSS(css, { cssOrigin: 'user' })
+          .then(() => { if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] injected ${unique.length} selectors into ${host}`); })
+          .catch((e) => { if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] insertCSS error:', e.message); });
+      });
+    });
+  });
 
   // User-Agent override for YouTube Playables & Google Services compatibility
   const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
@@ -1164,18 +1371,7 @@ app.whenReady().then(() => {
     }
   });
 
-  // HTTPS everywhere (auto-upgrade http→https)
-  session.defaultSession.webRequest.onBeforeRequest({ urls: ['http://*/*'] }, (details, callback) => {
-    try {
-      const url = new URL(details.url);
-      if (url.protocol === 'http:' && !url.port && !url.hostname.includes('localhost') && !url.hostname.includes('127.0.0.1')) {
-        url.protocol = 'https:';
-        callback({ redirectURL: url.toString() });
-        return;
-      }
-    } catch (e) {}
-    callback({});
-  });
+  // HTTPS everywhere (auto-upgrade http→https) — inside consolidated listener below
 
   // Anti-fingerprinting + selective permission handler
   // Government portals (GST, e-filing, DigiLocker, EPFO...) need geolocation,
@@ -1282,19 +1478,13 @@ app.whenReady().then(() => {
                 'cumulativeAds','adCount','totalAds','remainingAds',
                 'masthead','sparkles','promoted','promo','promotion',
                 'mealbar','legalBanner','enforcementMessage',
-                'bannerPromo','displayAd','actionCompanion','inFeedAd',
-                'adBreakBegin','adBreakEnd','adBreakLength',
-                'adBreakOffset','adBreakType','adPlacement','adInfoRenderer',
-                'adFeedbackDialog','adVideoId','adVideoIds','adBreakIndex',
-                'interstitialPlayerConfig','interstitialPlayerOverlay','midroll',
-                'postroll','preroll','paidVideoOverlay','adRenderer',
-                'slotRenderer','hotkeyAd','adServiceEndpoint','adLayoutEndpoint',
-                'adSlot','adBadge','adBadgeText','adBadgePosition','adHint',
-                'adHintText','adCaption','adCaptionText','adOverlay',
-                'adOverlayRenderer','adOverlayStyle','adTriggerType',
-                'adTriggerValue','adTriggerPosition','adTriggerOffset'
+                'bannerPromo','displayAd','actionCompanion','inFeedAd'
               ];
 
+              // API payload stripping — proven key set from the ytube/mtube
+              // clients (no depth cap, same as shipped). Runs on the embedded
+              // player response and all JSON.parse'd payloads; innertube
+              // fetch().json() responses are unaffected.
               function stripAdKeys(obj) {
                 if (!obj || typeof obj !== 'object') return obj;
                 try {
@@ -1329,19 +1519,32 @@ app.whenReady().then(() => {
                 document.head.appendChild(style);
               } catch(e) { console.log('[Black] YT ad CSS:', e.message); }
 
+              var fastForwarding = false;
               function checkAds() {
                 try {
                   var video = document.querySelector('video');
                   if (video) {
-                    var ad = document.querySelector('.ad-showing') ||
-                             document.querySelector('.ytp-ad-player-overlay');
+                    // Ad present when the player marks ad-showing OR the ad
+                    // overlay exists at all (visibility-independent — YT hides
+                    // it during ad load, so visibility checks let prerolls
+                    // play out and destabilize the player).
+                    var overlay = document.querySelector('.ytp-ad-player-overlay');
+                    var ad = document.querySelector('.ad-showing') || overlay;
                     if (ad) {
-                      video.muted = true;
-                      video.playbackRate = 16.0;
+                      // Only fast-forward while the video is genuinely playing;
+                      // a stalled/loading player must not be stuck at 16x.
+                      if (video.readyState >= 2 && !video.paused) {
+                        fastForwarding = true;
+                        video.muted = true;
+                        video.playbackRate = 16.0;
+                      }
                       var skip = document.querySelector('.ytp-ad-skip-button') ||
                                  document.querySelector('.ytp-ad-skip-button-modern');
                       if (skip) skip.click();
-                    } else if (video.playbackRate === 16.0) {
+                    } else if (fastForwarding) {
+                      // YouTube resets playbackRate to 1 on buffering/seek, so
+                      // keying the restore off rate===16 leaks a permanent mute.
+                      fastForwarding = false;
                       video.playbackRate = 1.0;
                       video.muted = false;
                     }
@@ -1352,10 +1555,86 @@ app.whenReady().then(() => {
                     if (btn) btn.click();
                     popup.remove();
                   }
-                } catch(e) {}
-                setTimeout(checkAds, 500);
+                  } catch(e) {}
+                  setTimeout(checkAds, 500);
               }
               checkAds();
+
+              // Stuck-player auto-recovery: when a loaded page reports
+              // playability OK but the player never starts (readyState 0,
+              // paused, no stream fetched — the YouTube SABR stuck state),
+              // retry play() once, then reload the page once (a fresh player
+              // request often succeeds where the first stalled).
+              // Re-armed on every video change so every clicked video gets a
+              // fresh recovery attempt (SPA navigation keeps this document).
+              var stuckPlayedAt = 0;
+              var stuckReloaded = false;
+              var lastVid = '';
+              function currentVid() {
+                try {
+                  var m = location.search.match(/[?&]v=([^&]+)/);
+                  return location.pathname + (m ? m[1] : '');
+                } catch (e) { return ''; }
+              }
+              function checkStuck() {
+                try {
+                  var vid = currentVid();
+                  if (vid && vid !== lastVid) {
+                    lastVid = vid;
+                    stuckPlayedAt = 0;
+                    stuckReloaded = false;
+                    fastForwarding = false;
+                  }
+                  if (stuckReloaded) return;
+                  var v = document.querySelector('video');
+                  if (!v) { setTimeout(checkStuck, 2000); return; }
+                  var pr = window.ytInitialPlayerResponse;
+                  var ok = pr && pr.playabilityStatus && pr.playabilityStatus.status === 'OK';
+                  if (!ok) { setTimeout(checkStuck, 5000); return; }
+                  // Genuinely stalled player: playability OK, no error, but the
+                  // media element never started (readyState 0). This also covers
+                  // the streams-fetched-but-never-played state.
+                  if (v.readyState === 0 && v.paused && !v.error) {
+                    if (document.visibilityState === 'visible') {
+                      if (!stuckPlayedAt) {
+                        stuckPlayedAt = Date.now();
+                        var p = v.play();
+                        if (p && p.catch) p.catch(function() {});
+                        var btn = document.querySelector('.ytp-large-play-button') ||
+                                  document.querySelector('.ytp-replay-button');
+                        if (btn) btn.click();
+                      } else if (Date.now() - stuckPlayedAt > 15000) {
+                        // A fresh player request often succeeds where the first
+                        // one stalled; recover by reloading the page once.
+                        stuckReloaded = true;
+                        location.reload();
+                      }
+                    } else {
+                      // Hidden window: YouTube will not start the player at all,
+                      // so keep the recovery armed for when it becomes visible.
+                      stuckPlayedAt = 0;
+                    }
+                  }
+                } catch(e) {}
+                setTimeout(checkStuck, 2000);
+              }
+              setTimeout(checkStuck, 8000);
+              // The moment the window becomes visible again, retry a stalled
+              // player immediately (YouTube never resumes it on its own).
+              document.addEventListener('visibilitychange', function() {
+                try {
+                  if (stuckReloaded) return;
+                  var v = document.querySelector('video');
+                  if (document.visibilityState === 'visible' && v && v.readyState === 0 && v.paused && !v.error) {
+                    stuckPlayedAt = Date.now();
+                    var p = v.play();
+                    if (p && p.catch) p.catch(function() {});
+                    var btn = document.querySelector('.ytp-large-play-button') ||
+                              document.querySelector('.ytp-replay-button');
+                    if (btn) btn.click();
+                  }
+                } catch(e) {}
+              });
 
               try {
                 new MutationObserver(function() {
