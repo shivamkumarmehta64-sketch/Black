@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('api', {
   extLoadDialog:    ()           => ipcRenderer.invoke('ext-load-dialog'),
   extLoad:          (dir)        => ipcRenderer.invoke('ext-load', dir),
   extRemove:        (id)         => ipcRenderer.invoke('ext-remove', id),
+  extInstallStore:  (urlOrId)    => ipcRenderer.invoke('ext-install-store', urlOrId),
 
   // ── Web capture & PDF ──
   webScreenshot:    (wcId)       => ipcRenderer.invoke('web-screenshot', wcId),

@@ -1277,6 +1277,37 @@ async function openExtensions() {
 
     const act = document.createElement('div');
     act.className = 'sb-action';
+
+    // Chrome Web Store install row: URL or extension ID
+    const storeInput = document.createElement('input');
+    storeInput.type = 'text';
+    storeInput.placeholder = 'Chrome Web Store URL or extension ID (e.g. cjpalhdlnbpafiamejdnhcphjbkeiagm)';
+    storeInput.style.cssText = 'flex:1;min-width:0;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg,#14151f);color:inherit;font-size:13px;';
+    const storeBtn = document.createElement('button');
+    storeBtn.className = 'mbtn primary small';
+    storeBtn.textContent = 'Install from Store';
+    storeBtn.addEventListener('click', async () => {
+        const input = storeInput.value.trim();
+        if (!input) return showToast('Paste a Chrome Web Store URL or extension ID first');
+        storeBtn.disabled = true;
+        storeBtn.textContent = 'Installing…';
+        try {
+            const res = await window.api.extInstallStore(input);
+            if (res && res.ok) {
+                showToast('Installed: ' + (res.name || '') + ' — reload pages to apply');
+                openExtensions();
+            } else {
+                showToast('Install failed: ' + ((res && res.error) || 'unknown error'));
+            }
+        } catch (e) {
+            showToast('Install failed: ' + e.message);
+        }
+        storeBtn.disabled = false;
+        storeBtn.textContent = 'Install from Store';
+    });
+    act.appendChild(storeInput);
+    act.appendChild(storeBtn);
+
     const loadBtn = document.createElement('button');
     loadBtn.className = 'mbtn primary small';
     loadBtn.textContent = 'Load Unpacked Extension…';
@@ -1298,7 +1329,7 @@ async function openExtensions() {
     if (!list.length) {
         const e = document.createElement('div');
         e.className = 'sb-empty';
-        e.textContent = 'No extensions loaded. Pick a folder containing a Chrome extension (manifest.json).';
+        e.textContent = 'No extensions yet. Paste a Chrome Web Store URL above, or load an unpacked folder with a manifest.json.';
         content.appendChild(e);
         return;
     }

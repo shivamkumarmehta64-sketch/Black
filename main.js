@@ -2,12 +2,43 @@ const { app, BrowserWindow, session, ipcMain, dialog, protocol, Tray, Menu, nati
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const http = require('http');
+const https = require('https');
+const { execFile } = require('child_process');
 
 const startTime = Date.now();
 let mainWindow;
 let blockedCount = 0;
 let windowCascadeCount = 0;
 let pendingUrl = null;
+let uboRefreshTimer = null;
+
+// ── GLOBAL CRASH SAFETY NETS ───────────────────────────────────────────────
+// No throw anywhere in main should take the browser down silently: log it,
+// dump a breadcrumb for diagnostics, and keep running. Unhandled promise
+// rejections are the same class of bug — surface them too.
+process.on('uncaughtException', (err) => {
+  try {
+    const line = '[Black] uncaughtException: ' + (err && err.stack ? err.stack : String(err));
+    console.error(line);
+    if (process.env.BLACK_LOG_FILE) {
+      try { fs.appendFileSync(process.env.BLACK_LOG_FILE, line + '\n'); } catch (e) {}
+    }
+  } catch (e) {}
+});
+process.on('unhandledRejection', (reason) => {
+  try {
+    const line = '[Black] unhandledRejection: ' + (reason && reason.stack ? reason.stack : String(reason));
+    console.error(line);
+    if (process.env.BLACK_LOG_FILE) {
+      try { fs.appendFileSync(process.env.BLACK_LOG_FILE, line + '\n'); } catch (e) {}
+    }
+  } catch (e) {}
+});
+// Crash dumps land in userData/crashpad for real process-level failures
+// (renderer/GPU crashes) so the root causes are never lost again.
+app.setPath('crashDumps', path.join(app.getPath('userData'), 'crashpad'));
+// ────────────────────────────────────────────────────────────────────────────
 
 // Dev/testing override: run with an isolated profile via BLACK_USER_DATA
 if (process.env.BLACK_USER_DATA) {
@@ -23,19 +54,10 @@ function urlFromArgv(argv = []) {
   return null;
 }
 
-// ── WEBVIEW MEMORY: GC on window blur & IPC collector ────────────────────────
-app.on('browser-window-blur', () => {
-  if (typeof global.gc === 'function') {
-    try { global.gc(); } catch (_) {}
-  }
-});
-
-ipcMain.handle('gc-collect', () => {
-  if (typeof global.gc === 'function') {
-    try { global.gc(); return true; } catch (_) {}
-  }
-  return false;
-});
+// ── WEBVIEW MEMORY: GC on IPC trigger only ──────────────────────────
+// Removed aggressive GC-on-blur (caused jank during normal browsing).
+// GC is available on demand via the memory-pressure IPC channel.
+// ────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── SSD HEALTH: RAM-buffered debounced disk writes ──────────────────────────
@@ -69,7 +91,10 @@ function flushDebouncedWrites() {
   }
 }
 
-app.on('before-quit', flushDebouncedWrites);
+app.on('before-quit', () => {
+  flushDebouncedWrites();
+  if (uboRefreshTimer) { clearInterval(uboRefreshTimer); uboRefreshTimer = null; }
+});
 app.on('will-quit', flushDebouncedWrites);
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -197,9 +222,11 @@ ipcMain.handle('ai-chat-start', async (e, payload) => {
   if (stream) body.stream = true;
 
   try {
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(base + '/chat/completions', {
       method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal
     });
+    clearTimeout(timeout);
     if (!res.ok) {
       let detail = '';
       try { detail = (await res.text()).slice(0, 500); } catch (_) {}
@@ -282,7 +309,7 @@ if (process.platform === 'win32') app.setAppUserModelId('com.black.browser');
 
 // Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'black-ui', privileges: { standard: true, secure: true, allowServiceWorkers: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
+  { scheme: 'black-ui', privileges: { standard: true, secure: true, allowServiceWorkers: true, supportFetchAPI: true, corsEnabled: true } }
 ]);
 
 // ── GPU & Rendering Performance Flags ──────────────────────────────────────
@@ -291,6 +318,9 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+// Stop Chromium from marking occluded windows as hidden — this is the root cause
+// of YouTube pausing when the Black window is covered by another window.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 // ────────────────────────────────────────────────────────────────────────────
 
 let tray = null;
@@ -306,7 +336,7 @@ if (!gotLock) {
       mainWindow.focus();
       const url = urlFromArgv(argv);
       if (url && !mainWindow.webContents.isDestroyed()) {
-        try { mainWindow.webContents.send('open-in-tab', url); } catch (e) {}
+        try { broadcast('open-in-tab', url); } catch (e) {}
       }
     }
   });
@@ -442,12 +472,15 @@ app.whenReady().then(() => {
   protocol.registerFileProtocol('black-ui', (request, callback) => {
     let urlPath = request.url.replace(/^black-ui:\/\//, '');
     urlPath = urlPath.split('?')[0].split('#')[0];
+    if (urlPath.includes('..') || urlPath.includes('\\')) { callback({ error: -6 }); return; }
+    const resolved = path.resolve(path.join(__dirname, urlPath));
+    if (!resolved.startsWith(path.resolve(__dirname))) { callback({ error: -6 }); return; }
     if (!urlPath || urlPath === 'newtab' || urlPath === 'newtab/' || urlPath === 'newtab.html') {
       callback({ path: path.join(__dirname, 'newtab.html') });
     } else if (urlPath === 'warning' || urlPath === 'warning.html') {
       callback({ path: path.join(__dirname, 'warning.html') });
     } else {
-      callback({ path: path.join(__dirname, urlPath) });
+      callback({ path: resolved });
     }
   });
 
@@ -631,9 +664,9 @@ app.whenReady().then(() => {
           }
         } catch (e) {}
       };
-      const stale = fs.existsSync(cachePath) && (Date.now() - fs.statSync(cachePath).mtimeMs) > 24 * 3600 * 1000;
-      if (stale) setTimeout(refresh, 30000);
-      setInterval(refresh, 24 * 3600 * 1000);
+       const stale = fs.existsSync(cachePath) && (Date.now() - fs.statSync(cachePath).mtimeMs) > 24 * 3600 * 1000;
+       if (stale) uboRefreshTimer = setTimeout(refresh, 30000);
+       uboRefreshTimer = setInterval(refresh, 24 * 3600 * 1000);
     } catch (e) {
       if (process.env.NODE_ENV === 'development') {
         console.error('[Black] uBO engine failed to start, C++ engine remains active:', e.message);
@@ -737,6 +770,29 @@ app.whenReady().then(() => {
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: ['*://*/*'] },
     (details, callback) => {
+      // Any exception here would destabilize the session — always degrade to
+      // "let it through" rather than break the page.
+      try {
+      // ── Stuck-player signal: a page whose video won't start asks to pause
+      // blocking for 5s so the blocked ad pipeline can complete (YouTube
+      // holds playback while a blocked preroll request hangs). One-shot per
+      // stuck video, scheduled by the page's checkPlayback loop.
+      // Authenticated: only honored when the requesting document is a YouTube page.
+      if (details.url === 'https://black.shields-off/') {
+        let fromYT = false;
+        try { fromYT = new URL(details.firstPartyUrl || '').hostname.endsWith('youtube.com'); } catch (e) {}
+        if (!fromYT) { passOrUpgrade(details, callback); return; }
+        if (shieldsEnabled) {
+          shieldsEnabled = false;
+          if (process.env.NODE_ENV === 'development') console.log('[Shields] player stuck — blocking paused for 5s');
+          setTimeout(() => {
+            shieldsEnabled = true;
+            if (process.env.NODE_ENV === 'development') console.log('[Shields] blocking resumed');
+          }, 5000);
+        }
+        callback({ cancel: true });
+        return;
+      }
       // ── Safety advisor: dangerous main-frame navigations → warning page
       if (details.resourceType === 'mainFrame') {
         advisorChecks++;
@@ -745,7 +801,7 @@ app.whenReady().then(() => {
           if (hit) {
             advisorBlocks++;
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('advisor-blocked', { url: details.url, category: hit.category, rule: hit.rule });
+              broadcast('advisor-blocked', { url: details.url, category: hit.category, rule: hit.rule });
             }
             callback({
               redirectURL: 'black-ui://warning?url=' + encodeURIComponent(details.url) +
@@ -763,15 +819,17 @@ app.whenReady().then(() => {
       const type = details.resourceType;
 
       // ── Fast static layer: well-known ad/telemetry hosts + YouTube ad endpoints
+      // (gated on shieldsEnabled so the user's toggle and the 5s stuck-player
+      // pause genuinely let everything through)
       let host = '';
       try { host = new URL(details.url).hostname.toLowerCase(); } catch (e) {}
       let staticBlocked = false;
-      if (host) {
+      if (shieldsEnabled && host) {
         for (const d of blockedAdHosts) {
           if (host === d || host.endsWith('.' + d)) { staticBlocked = true; break; }
         }
       }
-      if (!staticBlocked) {
+      if (!staticBlocked && shieldsEnabled) {
         const u = details.url.toLowerCase();
         for (const p of blockedAdPathSubstrs) {
           if (u.includes(p)) { staticBlocked = true; break; }
@@ -782,7 +840,7 @@ app.whenReady().then(() => {
         blockedCount++;
         shieldsBlocks++;
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('blocked-count', blockedCount);
+          broadcast('blocked-count', blockedCount);
         }
         callback({ cancel: true });
         return;
@@ -798,7 +856,7 @@ app.whenReady().then(() => {
             blockedCount++;
             shieldsBlocks++;
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('blocked-count', blockedCount);
+          broadcast('blocked-count', blockedCount);
             }
             callback({ cancel: true });
           } else if (resp && resp.redirectURL) {
@@ -810,45 +868,53 @@ app.whenReady().then(() => {
       } else {
         passOrUpgrade(details, callback);
       }
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') console.error('[WebRequest] handler error:', e.message);
+        passOrUpgrade(details, callback);
+      }
     }
   );
 
-  // Cosmetic (element-hiding) filtering: inject hide rules on page load
-  app.on('web-contents-created', (_e, wc) => {
-    wc.on('dom-ready', () => {
+  // Cosmetic (element-hiding) filtering: inject hide rules on page load and
+  // again on SPA navigations (YouTube watch→watch swaps content without a
+  // dom-ready event, so site-wide hiding rules must be re-applied).
+  const applyCosmetics = (wc) => {
+    if (wc.isDestroyed()) return;
+    const type = wc.getType();
+    let host = '';
+    try { host = new URL(wc.getURL()).hostname.toLowerCase(); } catch (err) {}
+    if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] type=${type} host=${host}`);
+    if (type !== 'webview' && type !== 'window') return;
+    if (!host || host === 'localhost' || host === '127.0.0.1' || isGovDomain('https://' + host)) return;
+    if (!uboReady || !uboBlocker || !shieldsEnabled) return;
+    // uBO cosmetic filtering: element-hiding rules for the site, injected
+    // in-process (same rules re-applied on SPA navs are harmless duplicates).
+    try {
+      const url = wc.getURL();
+      const { active, styles } = uboBlocker.getCosmeticsFilters({
+        domain: host,
+        hostname: host,
+        url: url,
+        getBaseRules: true,
+        getInjectionRules: true,
+        getExtendedRules: false,
+        getRulesFromHostname: true,
+        getRulesFromDOM: false,
+        callerContext: { frameId: -1, processId: -1, lifecycle: 'start' }
+      });
+      if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] ${host} sels=${styles ? styles.length : 0}`);
+      if (active === false || !styles || !styles.length) return;
       if (wc.isDestroyed()) return;
-      const type = wc.getType();
-      let host = '';
-      try { host = new URL(wc.getURL()).hostname.toLowerCase(); } catch (err) {}
-      if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] dom-ready type=${type} host=${host}`);
-      if (type !== 'webview' && type !== 'window') return;
-      if (!host || host === 'localhost' || host === '127.0.0.1' || isGovDomain('https://' + host)) return;
-      if (!uboReady || !uboBlocker || !shieldsEnabled) return;
-      // uBO cosmetic filtering: element-hiding rules for the site, injected
-      // once per page (in-process, no native exe involved).
-      try {
-        const url = wc.getURL();
-        const { active, styles } = uboBlocker.getCosmeticsFilters({
-          domain: host,
-          hostname: host,
-          url: url,
-          getBaseRules: true,
-          getInjectionRules: true,
-          getExtendedRules: false,
-          getRulesFromHostname: true,
-          getRulesFromDOM: false,
-          callerContext: { frameId: -1, processId: -1, lifecycle: 'start' }
-        });
-        if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] ${host} sels=${styles ? styles.length : 0}`);
-        if (active === false || !styles || !styles.length) return;
-        if (wc.isDestroyed()) return;
-        wc.insertCSS(styles, { cssOrigin: 'user' })
-          .then(() => { if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] injected ${styles.length} rules into ${host}`); })
-          .catch((e) => { if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] insertCSS error:', e.message); });
-      } catch (e) {
-        if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] error:', e.message);
-      }
-    });
+      wc.insertCSS(styles, { cssOrigin: 'user' })
+        .then(() => { if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] injected ${styles.length} rules into ${host}`); })
+        .catch((e) => { if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] insertCSS error:', e.message); });
+    } catch (e) {
+      if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] error:', e.message);
+    }
+  };
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('dom-ready', () => applyCosmetics(wc));
+    wc.on('did-navigate-in-page', () => applyCosmetics(wc));
   });
 
   // User-Agent override for YouTube Playables & Google Services compatibility
@@ -1003,6 +1069,104 @@ app.whenReady().then(() => {
     if (i > -1) loadedExtensions.splice(i, 1);
     persistExtensions();
     return true;
+  });
+
+  // ── Chrome Web Store install: CRX download → header strip → unzip → load ─
+  const extRootDir = path.join(app.getPath('userData'), 'extensions');
+
+  function downloadToFile(url, dest, redirectsLeft = 5) {
+    return new Promise((resolve, reject) => {
+      const lib = url.startsWith('https:') ? https : http;
+      const req = lib.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }, (res) => {
+        const loc = res.headers.location;
+        if (res.statusCode >= 300 && res.statusCode < 400 && loc && redirectsLeft > 0) {
+          res.resume();
+          return downloadToFile(new URL(loc, url).toString(), dest, redirectsLeft - 1).then(resolve, reject);
+        }
+        if (res.statusCode !== 200) { res.resume(); return reject(new Error('Download failed (HTTP ' + res.statusCode + ')')); }
+        const ws = fs.createWriteStream(dest);
+        res.pipe(ws);
+        ws.on('finish', () => ws.close(() => resolve()));
+        ws.on('error', reject);
+      });
+      req.on('error', reject);
+      req.setTimeout(60000, () => req.destroy(new Error('Download timed out')));
+    });
+  }
+
+  // CRX packages wrap a plain ZIP: "Cr24" + version + headerLength + header,
+  // then the ZIP archive. The web store's CRX3 may carry a small extra field
+  // between the header and the archive, so scan for the ZIP magic instead of
+  // trusting an exact offset.
+  function crxToZip(crxPath, zipPath) {
+    const buf = fs.readFileSync(crxPath);
+    if (buf.length < 16 || buf.toString('latin1', 0, 4) !== 'Cr24') throw new Error('Not a valid CRX file');
+    const version = buf.readUInt32LE(4);
+    const headerSize = buf.readUInt32LE(8);
+    if (version !== 2 && version !== 3) throw new Error('Unsupported CRX version: ' + version);
+    const from = 8 + headerSize;
+    let start = -1;
+    for (let i = from; i <= Math.min(buf.length - 4, from + 128); i++) {
+      if (buf[i] === 0x50 && buf[i + 1] === 0x4b && buf[i + 2] === 0x03 && buf[i + 3] === 0x04) { start = i; break; }
+    }
+    if (start < 0) throw new Error('CRX payload is not a ZIP archive');
+    fs.writeFileSync(zipPath, buf.subarray(start));
+  }
+
+  function unzipZip(zipPath, destDir) {
+    return new Promise((resolve, reject) => {
+      execFile('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`
+      ], { timeout: 120000, windowsHide: true }, (err) => err ? reject(err) : resolve());
+    });
+  }
+
+  // Store archives put files at the root; a few unpack one level deep.
+  function findManifestDir(root) {
+    if (fs.existsSync(path.join(root, 'manifest.json'))) return root;
+    try {
+      const sub = fs.readdirSync(root).filter((d) => {
+        try { return fs.statSync(path.join(root, d)).isDirectory(); } catch (e) { return false; }
+      });
+      if (sub.length === 1 && fs.existsSync(path.join(root, sub[0], 'manifest.json'))) {
+        return path.join(root, sub[0]);
+      }
+    } catch (e) {}
+    return root;
+  }
+
+  function extensionIdFromInput(input) {
+    const m = String(input || '').match(/([a-p]{32})/i);
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  ipcMain.handle('ext-install-store', async (_e, storeUrlOrId) => {
+    const id = extensionIdFromInput(storeUrlOrId);
+    if (!id) return { ok: false, error: 'No valid Chrome Web Store extension ID in that input' };
+    const dir = path.join(extRootDir, id);
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const crxPath = path.join(dir, 'ext.crx');
+      const zipPath = path.join(dir, 'ext.zip');
+      const url = 'https://clients2.google.com/service/update2/crx?response=redirect' +
+        '&acceptformat=crx2,crx3&prodversion=132.0.0.0&x=id%3D' + id + '%26uc';
+      await downloadToFile(url, crxPath);
+      crxToZip(crxPath, zipPath);
+      await unzipZip(zipPath, dir);
+      try { fs.unlinkSync(crxPath); fs.unlinkSync(zipPath); } catch (e) {}
+      const extDir = findManifestDir(dir);
+      const ext = await extensionLoad(extDir);
+      if (!loadedExtensions.some(x => x.id === ext.id)) {
+        loadedExtensions.push({ id: ext.id, name: ext.name, path: extDir, version: ext.version || '' });
+        persistExtensions();
+      }
+      if (process.env.NODE_ENV === 'development') console.log('[Black] Store extension installed:', ext.name, ext.id);
+      return { ok: true, id: ext.id, name: ext.name, version: ext.version || '' };
+    } catch (err) {
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+      return { ok: false, error: err.message || String(err) };
+    }
   });
 
   // ── WEB CAPTURE & PRINT TO PDF (active webview by webContents id) ─────────
@@ -1161,12 +1325,6 @@ app.whenReady().then(() => {
     return null;
   });
 
-  // ── IPC NAVIGATE-REQUEST: 150ms debounce + 30s same-URL cache ─────────────
-  const _navDebounceMap = new Map(); // tabId → timer
-  const _navCache = new Map();       // url  → { result, ts }
-  const NAV_DEBOUNCE_MS  = 150;
-  const NAV_CACHE_TTL_MS = 30_000;
-
   // Dev-mode IPC message counter (logs per minute)
   let _ipcMsgCount = 0;
   if (process.env.NODE_ENV === 'development') {
@@ -1178,39 +1336,15 @@ app.whenReady().then(() => {
     }, 60_000);
   }
 
-  ipcMain.handle('navigate-request', (_e, tabId, url) => {
-    if (process.env.NODE_ENV === 'development') _ipcMsgCount++;
-
-    return new Promise((resolve) => {
-      // Clear pending debounce for this tab
-      if (_navDebounceMap.has(tabId)) clearTimeout(_navDebounceMap.get(tabId));
-
-      _navDebounceMap.set(tabId, setTimeout(() => {
-        _navDebounceMap.delete(tabId);
-
-        // Check 30-second same-URL cache
-        const cached = _navCache.get(url);
-        if (cached && (Date.now() - cached.ts) < NAV_CACHE_TTL_MS) {
-          if (process.env.NODE_ENV === 'development')
-            console.log(`[Black IPC] Cache hit for ${url}`);
-          return resolve({ cached: true, url });
-        }
-
-        // Cache the navigation intent
-        _navCache.set(url, { ts: Date.now() });
-        // Evict stale cache entries
-        for (const [k, v] of _navCache) {
-          if (Date.now() - v.ts > NAV_CACHE_TTL_MS) _navCache.delete(k);
-        }
-
-        resolve({ cached: false, url });
-      }, NAV_DEBOUNCE_MS));
-    });
-  });
-  // ─────────────────────────────────────────────────────────────────────────
-
   mainWindow = createWindow();
   pendingUrl = urlFromArgv(process.argv);
+
+  // Broadcast an event to every open window (not just the first one).
+  function broadcast(event, data) {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send(event, data);
+    }
+  }
 
   // System tray — prefer .ico for multi-res Windows taskbar
   try {
@@ -1480,6 +1614,36 @@ app.whenReady().then(() => {
               }
               checkAds();
 
+              // Stuck-player bail-out: if a video hasn't started within 2s of
+              // being selected (playability OK, readyState 0, paused, no error —
+              // YouTube usually waits on a blocked preroll request here), ask
+              // the main process to pause blocking for 5s so the pipeline can
+              // complete and the video can start. One-shot per video; only
+              // fires while the window is visible (hidden windows never
+              // autoplay by design).
+              var stuckSent = false;
+              var stuckVid = '';
+              var stuckSince = 0;
+              function checkPlayback() {
+                try {
+                  var m = location.search.match(/[?&]v=([^&]+)/);
+                  var vid = m ? m[1] : '';
+                  if (vid && vid !== stuckVid) { stuckVid = vid; stuckSent = false; stuckSince = Date.now(); }
+                  var pr = window.ytInitialPlayerResponse;
+                  var ok = pr && pr.playabilityStatus && pr.playabilityStatus.status === 'OK';
+                  if (!ok) { setTimeout(checkPlayback, 2000); return; }
+                  var v = document.querySelector('video');
+                  var stuck = v && document.visibilityState === 'visible' &&
+                              v.readyState === 0 && v.paused && !v.error;
+                  if (!stuckSent && stuck && Date.now() - stuckSince >= 2000) {
+                    stuckSent = true;
+                    try { fetch('https://black.shields-off/', { mode: 'no-cors' }).catch(function() {}); } catch(e) {}
+                  }
+                } catch(e) {}
+                setTimeout(checkPlayback, 1000);
+              }
+              setTimeout(checkPlayback, 500);
+
               try {
                 new MutationObserver(function() {
                   try {
@@ -1565,17 +1729,24 @@ app.whenReady().then(() => {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Crash recovery & memory guard (multi-tab stability) ─────────────────
-  // If the browser UI itself crashes, bring it back with a reload (session is
-  // persisted, tabs are restored from session.json).
+  // Backoff: max 3 reloads in 60s per window to avoid reload loops.
+  const crashReloads = new Map();
   app.on('web-contents-created', (_ev, wc) => {
     if (wc.getType() !== 'window') return;
     wc.on('render-process-gone', (_e, details) => {
       if (details.reason === 'clean-exit' || details.reason === 'launch-failed') return;
+      const count = (crashReloads.get(wc.id) || 0) + 1;
+      crashReloads.set(wc.id, count);
+      if (count > 3) {
+        if (process.env.NODE_ENV === 'development') console.log('[Black] Crash loop aborted for window', wc.id);
+        return;
+      }
+      const delay = Math.min(count * 2000, 10000);
       setTimeout(() => {
         try {
           if (!wc.isDestroyed() && !wc.isLoading()) wc.reload();
         } catch (_) {}
-      }, 1500);
+      }, delay);
     });
   });
 
@@ -1608,7 +1779,7 @@ app.whenReady().then(() => {
     item.setSavePath(filePath);
 
     if (mainWindow) {
-      mainWindow.webContents.send('download-start', {
+      broadcast('download-start', {
         filename: path.basename(filePath),
         totalBytes: item.getTotalBytes()
       });
@@ -1618,7 +1789,7 @@ app.whenReady().then(() => {
       if (state === 'progressing') {
         const progress = (item.getReceivedBytes() / item.getTotalBytes()) * 100;
         if (mainWindow) {
-          mainWindow.webContents.send('download-progress', {
+          broadcast('download-progress', {
             filename: path.basename(filePath),
             progress: progress.toFixed(1)
           });
@@ -1628,7 +1799,7 @@ app.whenReady().then(() => {
 
     item.once('done', (event, state) => {
       if (mainWindow) {
-        mainWindow.webContents.send('download-done', {
+        broadcast('download-done', {
           filename: path.basename(filePath),
           state: state
         });
