@@ -41,6 +41,23 @@ npm start
 
 ---
 
+## 🐧 Linux
+
+Linux support lives on the **`linux-build`** branch (AppImage + deb, built automatically via GitHub Actions):
+
+```bash
+# From the linux-build branch
+npm ci
+npm run build-linux          # produces dist/*.AppImage and dist/*.deb
+```
+
+- **Ubuntu 22.04+ / Debian 12+** (x86_64): install with `sudo dpkg -i dist/*.deb` or run the AppImage directly (`chmod +x dist/*.AppImage`).
+- **WSL2**: run the AppImage with `./Black-*.AppImage --no-sandbox` (or use the WSLg display for a native window).
+- Tag any commit `v*` on `linux-build` and GitHub Actions publishes both packages to a Release.
+- Windows-only features (browser registration, SMART health, native shields engine) are platform-guarded and skip themselves on Linux.
+
+---
+
 ## 🔗 Related Projects & Author Profile
 
 Developed by **[shivamkumarmehta64-sketch](https://github.com/shivamkumarmehta64-sketch)**:
