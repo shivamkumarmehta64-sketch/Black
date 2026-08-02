@@ -339,6 +339,7 @@ function createWindow(opts = {}) {
 
   const showWindow = () => {
     if (win && !win.isVisible()) {
+      if (win.isMinimized()) win.restore();
       if (windowCascadeCount === 1) win.center();
       win.show();
       win.focus();
@@ -558,137 +559,12 @@ app.whenReady().then(() => {
     return false;
   });
 
-  // ── NATIVE SHIELDS ENGINE (Brave-style ad/tracker blocking, C++) ─────────
-  const { spawn } = require('child_process');
-  const readline = require('readline');
-
-  let shieldsProc = null;
-  let shieldsReady = false;
+  // ── AD-BLOCK STATE ────────────────────────────────────────────────────────
+  // Single engine: uBO (@ghostery/adblocker-electron) handles network AND
+  // cosmetic filtering in-process (no native exe, no IPC).
   let shieldsEnabled = true;
-  let shieldsRulesCount = 0;
-  let shieldsCosmeticCount = 0;
-  let shieldsListsLoaded = 0;
   let shieldsChecks = 0;
   let shieldsBlocks = 0;
-  const shieldsPending = [];
-  const shieldsCosmeticPending = new Map();
-  const shieldsCosmeticCache = new Map();
-  let shieldsCosmeticId = 0;
-
-  function shieldsExePath() {
-    const prod = path.join(process.resourcesPath, 'native_engine', 'black_shields.exe');
-    const dev = path.join(__dirname, 'native_engine', 'black_shields.exe');
-    if (fs.existsSync(prod)) return prod;
-    return dev;
-  }
-
-  function shieldsListsDir() {
-    const prod = path.join(process.resourcesPath, 'native_engine', 'lists');
-    if (fs.existsSync(prod)) return prod;
-    return path.join(__dirname, 'native_engine', 'lists');
-  }
-
-  function startShieldsEngine() {
-    if (process.platform !== 'win32') return;
-    const exe = shieldsExePath();
-    if (!fs.existsSync(exe)) {
-      console.error('[Black] Native shields engine not found:', exe);
-      return;
-    }
-    try {
-      shieldsProc = spawn(exe, [], { stdio: ['pipe', 'pipe', 'pipe'] });
-    } catch (e) {
-      console.error('[Black] Failed to spawn shields engine:', e.message);
-      return;
-    }
-    readline.createInterface({ input: shieldsProc.stdout }).on('line', (line) => {
-      if (line.startsWith('STATS\t')) {
-        const parts = line.split('\t');
-        shieldsRulesCount = parseInt(parts[1], 10) || 0;
-        shieldsCosmeticCount = parseInt(parts[2], 10) || 0;
-        return;
-      }
-      if (line === 'PONG') { shieldsReady = true; return; }
-      if (line.startsWith('LISTED\t')) {
-        shieldsListsLoaded++;
-        return;
-      }
-      if (line.startsWith('COSM\t')) {
-        const parts = line.split('\t');
-        const id = parseInt(parts[1], 10);
-        const cb = shieldsCosmeticPending.get(id);
-        if (cb) {
-          shieldsCosmeticPending.delete(id);
-          cb(parts.slice(3));
-        }
-        return;
-      }
-      const resolver = shieldsPending.shift();
-      if (!resolver) return;
-      if (line.startsWith('BLOCK\t')) {
-        shieldsBlocks++;
-        const parts = line.split('\t');
-        resolver({ blocked: true, category: parts[1] || 'advertising', rule: parts[2] || '' });
-      } else {
-        resolver({ blocked: false });
-      }
-    });
-    shieldsProc.stderr.on('data', (d) => {
-      if (process.env.NODE_ENV === 'development') console.error('[Shields]', String(d).trim());
-    });
-    shieldsProc.on('error', () => { shieldsReady = false; });
-    shieldsProc.on('exit', () => { shieldsReady = false; });
-    shieldsProc.stdin.write('PING\n');
-    const listsDir = shieldsListsDir();
-    const easylist = path.join(listsDir, 'easylist.txt');
-    const easyprivacy = path.join(listsDir, 'easyprivacy.txt');
-    if (fs.existsSync(easylist)) shieldsProc.stdin.write(`LIST\tadvertising\t${easylist}\n`);
-    if (fs.existsSync(easyprivacy)) shieldsProc.stdin.write(`LIST\ttracking\t${easyprivacy}\n`);
-    shieldsProc.stdin.write('STATS\n');
-    if (process.env.NODE_ENV === 'development') console.log('[Black] Native shields engine started (C++)');
-  }
-
-  function shieldsCheck(url, type, site) {
-    return new Promise((resolve) => {
-      if (!shieldsReady || !shieldsEnabled || !shieldsProc) return resolve({ blocked: false });
-      shieldsChecks++;
-      shieldsPending.push(resolve);
-      shieldsProc.stdin.write(`CHECK\t${type}\t${url}\t${site}\n`);
-      setTimeout(() => {
-        const idx = shieldsPending.indexOf(resolve);
-        if (idx > -1) { shieldsPending.splice(idx, 1); resolve({ blocked: false }); }
-      }, 200);
-    });
-  }
-
-  function shieldsCosmetics(site) {
-    return new Promise((resolve) => {
-      if (!shieldsReady || !shieldsEnabled || !shieldsProc) return resolve([]);
-      const cached = shieldsCosmeticCache.get(site);
-      if (cached) return resolve(cached);
-      const id = ++shieldsCosmeticId;
-      shieldsCosmeticPending.set(id, (sels) => {
-        shieldsCosmeticCache.set(site, sels);
-        resolve(sels);
-      });
-      shieldsProc.stdin.write(`COSMETIC\t${id}\t${site}\n`);
-      setTimeout(() => {
-        if (shieldsCosmeticPending.delete(id)) resolve([]);
-      }, 500);
-    });
-  }
-
-  function shieldsResourceType(t) {
-    if (t === 'script') return 'script';
-    if (t === 'stylesheet') return 'stylesheet';
-    if (t === 'image') return 'image';
-    if (t === 'font') return 'font';
-    if (t === 'media') return 'media';
-    if (t === 'xhr') return 'xmlhttprequest';
-    return 'other';
-  }
-
-  startShieldsEngine();
 
   // ── uBO ENGINE (Ghostery/adblocker — the uBlock Origin engine) ──────────
   // Primary network filter: synchronous in-process matching (no IPC, no
@@ -698,15 +574,24 @@ app.whenReady().then(() => {
   let uboBlocker = null;
   let uboReady = false;
   let uboRulesCount = 0;
+  let uboCosmeticCount = 0;
 
   async function startUboEngine() {
     try {
-      const { ElectronBlocker, fullLists } = require('@ghostery/adblocker-electron');
-      const cachePath = path.join(app.getPath('userData'), 'engine.bin');
+      const { ElectronBlocker } = require('@ghostery/adblocker-electron');
+      // Minimal, fast list set: core uBO + EasyList/Privacy only (the 17-list
+      // full set tripled boot time for marginal extra coverage).
+      const uboLists = [
+        'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/easylist/easylist.txt',
+        'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/easylist/easyprivacy.txt',
+        'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/filters.txt',
+        'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/unbreak.txt'
+      ];
+      const cachePath = path.join(app.getPath('userData'), 'engine2.bin');
       const config = {
         enableCompression: true,
         loadNetworkFilters: true,
-        loadCosmeticFilters: false,
+        loadCosmeticFilters: true,
         loadExceptionFilters: true,
         loadPreprocessors: true
       };
@@ -718,27 +603,31 @@ app.whenReady().then(() => {
         },
         write: async (p, b) => { try { fs.writeFileSync(p, Buffer.from(b)); } catch (e) {} }
       };
-      const blocker = await ElectronBlocker.fromLists(fetch, fullLists, config, caching);
+      const blocker = await ElectronBlocker.fromLists(fetch, uboLists, config, caching);
       uboBlocker = blocker;
-      uboRulesCount = blocker.getFilters().networkFilters.length;
+      const f = blocker.getFilters();
+      uboRulesCount = f.networkFilters.length;
+      uboCosmeticCount = f.cosmeticFilters.length;
       uboReady = true;
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Black] uBO engine ready (${uboRulesCount} network filters)`);
+        console.log(`[Black] uBO engine ready (${uboRulesCount} network, ${uboCosmeticCount} cosmetic filters)`);
       }
       // Zero-maintenance list updates: silently re-fetch fresh uBO lists in
       // the background when the cached engine is older than 24h, then daily.
       // A failed refresh leaves the current engine untouched.
       const refresh = async () => {
         try {
-          const b = await ElectronBlocker.fromLists(fetch, fullLists, config, {
+          const b = await ElectronBlocker.fromLists(fetch, uboLists, config, {
             path: cachePath,
             read: async () => { throw new Error('no cache'); },
             write: caching.write
           });
           uboBlocker = b;
-          uboRulesCount = b.getFilters().networkFilters.length;
+          const fn = b.getFilters();
+          uboRulesCount = fn.networkFilters.length;
+          uboCosmeticCount = fn.cosmeticFilters.length;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[Black] uBO lists refreshed (${uboRulesCount} network filters)`);
+            console.log(`[Black] uBO lists refreshed (${uboRulesCount} network, ${uboCosmeticCount} cosmetic filters)`);
           }
         } catch (e) {}
       };
@@ -751,7 +640,9 @@ app.whenReady().then(() => {
       }
     }
   }
-  startUboEngine();
+  // Defer the uBO bootstrap a few seconds so the window paints instantly;
+  // the C++ engine covers requests until uBO is ready.
+  setTimeout(startUboEngine, 3000);
 
   // Honor persisted shields preference (settings.json → shields: false)
   try {
@@ -763,17 +654,12 @@ app.whenReady().then(() => {
   } catch (e) {}
 
   app.on('will-quit', () => {
-    if (shieldsProc) {
-      try { shieldsProc.stdin.write('EXIT\n'); } catch (e) {}
-      setTimeout(() => { try { shieldsProc.kill(); } catch (e) {} }, 50);
-      shieldsReady = false;
-    }
   });
 
   ipcMain.handle('shields-status', () => ({
-    engine: uboReady ? 'ubo' : (shieldsReady ? 'native' : 'fallback'),
-    rules: uboReady ? uboRulesCount : shieldsRulesCount,
-    cosmetic: shieldsCosmeticCount,
+    engine: uboReady ? 'ubo' : 'fallback',
+    rules: uboRulesCount,
+    cosmetic: uboCosmeticCount,
     checks: shieldsChecks,
     blocks: shieldsBlocks,
     enabled: shieldsEnabled
@@ -905,11 +791,7 @@ app.whenReady().then(() => {
         return;
       }
 
-      // ── Filtering engine layer: uBO engine (primary) or C++ engine (fallback) ──
-      // uBO matching is synchronous and in-process; YouTube is NOT exempted —
-      // uBO's YouTube rules are battle-tested (ad endpoints only, never
-      // player-critical streams). C++ engine remains the fallback and still
-      // provides cosmetic filters.
+      // ── Filtering engine layer: uBO engine (network + cosmetics, sync) ──
       const siteHost = siteForRequest(details);
       if (uboReady && uboBlocker && shieldsEnabled) {
         shieldsChecks++;
@@ -924,19 +806,6 @@ app.whenReady().then(() => {
             callback({ cancel: true });
           } else if (resp && resp.redirectURL) {
             callback({ redirectURL: resp.redirectURL });
-          } else {
-            passOrUpgrade(details, callback);
-          }
-        });
-      } else if (shieldsReady && shieldsEnabled && shieldsProc) {
-        shieldsCheck(details.url, shieldsResourceType(type), siteHost).then((r) => {
-          if (r.blocked) {
-            if (process.env.NODE_ENV === 'development') console.log(`[Block] ${type} ${details.url.slice(0, 140)} (${r.category}: ${r.rule}) site=${siteHost}`);
-            blockedCount++;
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('blocked-count', blockedCount);
-            }
-            callback({ cancel: true });
           } else {
             passOrUpgrade(details, callback);
           }
@@ -957,15 +826,31 @@ app.whenReady().then(() => {
       if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] dom-ready type=${type} host=${host}`);
       if (type !== 'webview' && type !== 'window') return;
       if (!host || host === 'localhost' || host === '127.0.0.1' || isGovDomain('https://' + host)) return;
-      shieldsCosmetics(host).then((sels) => {
-        if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] ${host} sels=${sels.length}`);
-        if (wc.isDestroyed() || !sels.length) return;
-        const unique = Array.from(new Set(sels));
-        const css = unique.join(',') + '{display:none!important}';
-        wc.insertCSS(css, { cssOrigin: 'user' })
-          .then(() => { if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] injected ${unique.length} selectors into ${host}`); })
+      if (!uboReady || !uboBlocker || !shieldsEnabled) return;
+      // uBO cosmetic filtering: element-hiding rules for the site, injected
+      // once per page (in-process, no native exe involved).
+      try {
+        const url = wc.getURL();
+        const { active, styles } = uboBlocker.getCosmeticsFilters({
+          domain: host,
+          hostname: host,
+          url: url,
+          getBaseRules: true,
+          getInjectionRules: true,
+          getExtendedRules: false,
+          getRulesFromHostname: true,
+          getRulesFromDOM: false,
+          callerContext: { frameId: -1, processId: -1, lifecycle: 'start' }
+        });
+        if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] ${host} sels=${styles ? styles.length : 0}`);
+        if (active === false || !styles || !styles.length) return;
+        if (wc.isDestroyed()) return;
+        wc.insertCSS(styles, { cssOrigin: 'user' })
+          .then(() => { if (process.env.NODE_ENV === 'development') console.log(`[Cosmetic] injected ${styles.length} rules into ${host}`); })
           .catch((e) => { if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] insertCSS error:', e.message); });
-      });
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') console.log('[Cosmetic] error:', e.message);
+      }
     });
   });
 
@@ -1556,85 +1441,9 @@ app.whenReady().then(() => {
                     popup.remove();
                   }
                   } catch(e) {}
-                  setTimeout(checkAds, 500);
+                  setTimeout(checkAds, 1500);
               }
               checkAds();
-
-              // Stuck-player auto-recovery: when a loaded page reports
-              // playability OK but the player never starts (readyState 0,
-              // paused, no stream fetched — the YouTube SABR stuck state),
-              // retry play() once, then reload the page once (a fresh player
-              // request often succeeds where the first stalled).
-              // Re-armed on every video change so every clicked video gets a
-              // fresh recovery attempt (SPA navigation keeps this document).
-              var stuckPlayedAt = 0;
-              var stuckReloaded = false;
-              var lastVid = '';
-              function currentVid() {
-                try {
-                  var m = location.search.match(/[?&]v=([^&]+)/);
-                  return location.pathname + (m ? m[1] : '');
-                } catch (e) { return ''; }
-              }
-              function checkStuck() {
-                try {
-                  var vid = currentVid();
-                  if (vid && vid !== lastVid) {
-                    lastVid = vid;
-                    stuckPlayedAt = 0;
-                    stuckReloaded = false;
-                    fastForwarding = false;
-                  }
-                  if (stuckReloaded) return;
-                  var v = document.querySelector('video');
-                  if (!v) { setTimeout(checkStuck, 2000); return; }
-                  var pr = window.ytInitialPlayerResponse;
-                  var ok = pr && pr.playabilityStatus && pr.playabilityStatus.status === 'OK';
-                  if (!ok) { setTimeout(checkStuck, 5000); return; }
-                  // Genuinely stalled player: playability OK, no error, but the
-                  // media element never started (readyState 0). This also covers
-                  // the streams-fetched-but-never-played state.
-                  if (v.readyState === 0 && v.paused && !v.error) {
-                    if (document.visibilityState === 'visible') {
-                      if (!stuckPlayedAt) {
-                        stuckPlayedAt = Date.now();
-                        var p = v.play();
-                        if (p && p.catch) p.catch(function() {});
-                        var btn = document.querySelector('.ytp-large-play-button') ||
-                                  document.querySelector('.ytp-replay-button');
-                        if (btn) btn.click();
-                      } else if (Date.now() - stuckPlayedAt > 15000) {
-                        // A fresh player request often succeeds where the first
-                        // one stalled; recover by reloading the page once.
-                        stuckReloaded = true;
-                        location.reload();
-                      }
-                    } else {
-                      // Hidden window: YouTube will not start the player at all,
-                      // so keep the recovery armed for when it becomes visible.
-                      stuckPlayedAt = 0;
-                    }
-                  }
-                } catch(e) {}
-                setTimeout(checkStuck, 2000);
-              }
-              setTimeout(checkStuck, 8000);
-              // The moment the window becomes visible again, retry a stalled
-              // player immediately (YouTube never resumes it on its own).
-              document.addEventListener('visibilitychange', function() {
-                try {
-                  if (stuckReloaded) return;
-                  var v = document.querySelector('video');
-                  if (document.visibilityState === 'visible' && v && v.readyState === 0 && v.paused && !v.error) {
-                    stuckPlayedAt = Date.now();
-                    var p = v.play();
-                    if (p && p.catch) p.catch(function() {});
-                    var btn = document.querySelector('.ytp-large-play-button') ||
-                              document.querySelector('.ytp-replay-button');
-                    if (btn) btn.click();
-                  }
-                } catch(e) {}
-              });
 
               try {
                 new MutationObserver(function() {
