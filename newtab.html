@@ -12,6 +12,8 @@
             --glass-blur: 16px;
             --radius-md: 14px;
             --radius-lg: 20px;
+            --nt-font: 1;
+            --nt-tab: 1;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { background: #05080f; }
@@ -74,7 +76,7 @@
             display: flex; flex-direction: column; align-items: center;
             justify-content: safe center;
             height: 100vh; width: 100%;
-            padding: 44px 24px 96px;
+            padding: 44px 24px 138px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
@@ -149,9 +151,9 @@
             min-width: 0;
         }
         .dial-card:focus { outline: none; }
-        .dial-tile { position: relative; width: 64px; height: 64px; flex: none; }
+        .dial-tile { position: relative; width: calc(64px * var(--nt-tab)); height: calc(64px * var(--nt-tab)); flex: none; }
         .dial-favicon-wrap {
-            width: 64px; height: 64px; border-radius: 50%; position: relative;
+            width: calc(64px * var(--nt-tab)); height: calc(64px * var(--nt-tab)); border-radius: 50%; position: relative;
             display: flex; align-items: center; justify-content: center;
             background: rgba(4, 7, 13, 0.72); overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -165,7 +167,7 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 12px color-mix(in srgb, var(--accent) 25%, transparent);
         }
         .dial-letter {
-            position: absolute; font-size: 26px; font-weight: 600; color: #ffffff;
+            position: absolute; font-size: calc(26px * var(--nt-tab)); font-weight: 600; color: #ffffff;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
         }
         .dial-favicon-wrap img {
@@ -173,7 +175,7 @@
             filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
         }
         .dial-name {
-            font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.92);
+            font-size: calc(12px * var(--nt-font)); font-weight: 500; color: rgba(255, 255, 255, 0.92);
             max-width: 100%; padding: 0 4px;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -204,7 +206,7 @@
             border-style: dashed; border-color: rgba(255,255,255,0.22);
             background: rgba(10,16,30,0.3);
         }
-        .dial-add .dial-favicon-wrap span { font-size: 30px; font-weight: 300; line-height: 1; color: rgba(255,255,255,0.75); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .dial-add .dial-favicon-wrap span { font-size: calc(30px * var(--nt-tab)); font-weight: 300; line-height: 1; color: rgba(255,255,255,0.75); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
         .dial-add:hover .dial-favicon-wrap { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .dial-add:hover .dial-favicon-wrap span { color: var(--accent); }
 
@@ -216,9 +218,9 @@
         }
         .gems-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 22px; max-width: 860px; }
         .gem-card { width: 70px; gap: 8px; }
-        .gem-card .dial-tile { width: 46px; height: 46px; }
-        .gem-card .dial-favicon-wrap { width: 46px; height: 46px; }
-        .gem-card .dial-name { font-size: 10.5px; color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
+        .gem-card .dial-tile { width: calc(46px * var(--nt-tab)); height: calc(46px * var(--nt-tab)); }
+        .gem-card .dial-favicon-wrap { width: calc(46px * var(--nt-tab)); height: calc(46px * var(--nt-tab)); }
+        .gem-card .dial-name { font-size: calc(10.5px * var(--nt-font)); color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
 
         /* Module cards — Edge/Firefox style: quiet glass cards at the bottom */
         #widgets-row {
@@ -233,7 +235,7 @@
         }
         .widget-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .widget-title {
-            font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+            font-size: calc(11px * var(--nt-font)); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
             color: rgba(255,255,255,0.45);
         }
         .widget-btn {
@@ -303,6 +305,32 @@
         .dock-item:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
         .dock-item svg { width: 19px; height: 19px; fill: rgba(255,255,255,0.75); }
         .dock-item:hover svg { fill: #fff; }
+        .dock-item.more-dot { color: rgba(255,255,255,0.75); font-size: 16px; letter-spacing: 1px; font-weight: 700; line-height: 1; padding-bottom: 3px; }
+
+        /* Options popup — three-dots menu (font size + tab size) */
+        #options-popup {
+            position: fixed; bottom: 96px; left: 50%; z-index: 6;
+            width: 260px; padding: 16px 18px; border-radius: 16px;
+            transform: translateX(-50%) translateY(10px) scale(0.98);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        #options-popup.open { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); pointer-events: auto; }
+        .opt-title {
+            font-size: 10.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45); margin-bottom: 12px;
+        }
+        .opt-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .opt-row:last-child { margin-bottom: 0; }
+        .opt-label { font-size: 12.5px; color: rgba(255,255,255,0.85); }
+        .seg { display: flex; gap: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 3px; }
+        .seg button {
+            width: 30px; height: 26px; border: none; border-radius: 8px; cursor: pointer;
+            background: transparent; color: rgba(255,255,255,0.6); font-size: 11.5px; font-weight: 600;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .seg button:hover { color: #fff; }
+        .seg button.on { background: color-mix(in srgb, var(--accent) 30%, transparent); color: #fff; }
 
         .icon-btn {
             position: fixed; bottom: 18px; right: 18px; z-index: 20;
@@ -326,6 +354,9 @@
         }
         .qa-btn:hover { transform: translateY(-2px) scale(1.06); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .qa-btn svg { width: 21px; height: 21px; fill: rgba(255,255,255,0.8); }
+        .qa-btn.close:hover { border-color: rgba(255, 107, 129, 0.65); }
+        .qa-btn.close:hover svg { fill: #ff6b81; }
+        .qa-btn.close:hover { box-shadow: 0 0 14px rgba(255, 107, 129, 0.35); }
         #btn-ai { position: relative; }
         #btn-ai::after {
             content: ''; position: absolute; inset: -5px; border-radius: 50%;
@@ -447,6 +478,9 @@
         <button class="qa-btn glass" id="btn-fullscreen" title="Fullscreen">
             <svg viewBox="0 0 24 24"><path d="M5 5H10V7H7V10H5V5M14 5H19V10H17V7H14V5M7 14H10V19H7V16H5V14H7M17 14V17H14V19H19V14H17Z" /></svg>
         </button>
+        <button class="qa-btn glass close" id="btn-close" title="Close Black">
+            <svg viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" /></svg>
+        </button>
     </div>
         <div class="cp-head">Customize</div>
         <div class="cp-section">
@@ -551,6 +585,27 @@
         <a href="javascript:void(0)" class="dock-item" data-panel="bookmarks" title="Bookmarks"><svg viewBox="0 0 24 24"><path d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5A2,2 0 0,0 17,3Z" /></svg></a>
         <a href="javascript:void(0)" class="dock-item" data-panel="history" title="History"><svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" /></svg></a>
         <a href="javascript:void(0)" class="dock-item" data-panel="settings" title="Settings"><svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg></a>
+        <a href="javascript:void(0)" class="dock-item more-dot" id="btn-options" title="Options">⋯</a>
+    </div>
+
+    <div id="options-popup" class="glass">
+        <div class="opt-title">Options</div>
+        <div class="opt-row">
+            <span class="opt-label">Font Size</span>
+            <div class="seg" id="seg-font">
+                <button data-v="0.88">S</button>
+                <button data-v="1">M</button>
+                <button data-v="1.12">L</button>
+            </div>
+        </div>
+        <div class="opt-row">
+            <span class="opt-label">Tab Size</span>
+            <div class="seg" id="seg-tab">
+                <button data-v="0.86">S</button>
+                <button data-v="1">M</button>
+                <button data-v="1.14">L</button>
+            </div>
+        </div>
     </div>
 
     <div id="editor-overlay">
@@ -662,6 +717,8 @@
             accent: '#38d9ff',
             name: 'Shiva',
             aurora: false,
+            fontScale: 1,
+            tabScale: 1,
             quoteIndex: null,
             widgets: { quote: true, dials: true, gems: true, continue: true, notes: true, weather: true },
             dials: DEFAULT_DIALS
@@ -794,6 +851,8 @@
             root.setProperty('--accent', state.accent);
             root.setProperty('--dim', String(state.dim));
             root.setProperty('--glass-blur', state.blur + 'px');
+            root.setProperty('--nt-font', String(state.fontScale || 1));
+            root.setProperty('--nt-tab', String(state.tabScale || 1));
             document.body.classList.toggle('aurora', state.aurora && !reduceMotion);
             applyWidgetVisibility();
             var bg = $('bg');
@@ -816,6 +875,7 @@
             renderQuote();
             renderWeather();
             updateTime();
+            syncSegments();
         }
 
         function renderSwatches() {
@@ -1292,6 +1352,9 @@
         $('btn-fullscreen').addEventListener('click', function () {
             if (window.api && window.api.toggleFullscreen) window.api.toggleFullscreen();
         });
+        $('btn-close').addEventListener('click', function () {
+            if (window.api && window.api.closeWindow) window.api.closeWindow();
+        });
         $('weather-refresh').addEventListener('click', loadWeather);
         document.addEventListener('click', function (e) {
             var panel = $('customize-panel');
@@ -1299,6 +1362,34 @@
                 !panel.contains(e.target) && e.target.id !== 'btn-customize') {
                 document.body.classList.remove('panel-open');
             }
+            var popup = $('options-popup');
+            if (popup.classList.contains('open') &&
+                !popup.contains(e.target) && e.target.id !== 'btn-options') {
+                popup.classList.remove('open');
+            }
+        });
+
+        $('btn-options').addEventListener('click', function (e) {
+            e.stopPropagation();
+            $('options-popup').classList.toggle('open');
+        });
+        function syncSegments() {
+            [['seg-font', state.fontScale || 1], ['seg-tab', state.tabScale || 1]].forEach(function (pair) {
+                var seg = $(pair[0]);
+                seg.querySelectorAll('button').forEach(function (b) {
+                    b.classList.toggle('on', Math.abs(parseFloat(b.dataset.v) - pair[1]) < 0.001);
+                });
+            });
+        }
+        document.querySelectorAll('#seg-font button, #seg-tab button').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var segId = b.parentElement.id;
+                var v = parseFloat(b.dataset.v);
+                if (segId === 'seg-font') { state.fontScale = v; }
+                else { state.tabScale = v; }
+                applyState();
+                saveState();
+            });
         });
 
         $('slider-dim').addEventListener('input', function () {
