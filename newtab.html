@@ -70,13 +70,13 @@
             background: rgba(10,16,30,0.86);
         }
 
-        /* Page scrolls when content is tall, centers when short */
+        /* Page scrolls when content is tall, stays top-aligned when short */
         #content {
             position: relative; z-index: 1;
             display: flex; flex-direction: column; align-items: center;
-            justify-content: safe center;
+            justify-content: flex-start;
             height: 100vh; width: 100%;
-            padding: 44px 24px 138px;
+            padding: 24px 24px 128px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
@@ -117,7 +117,7 @@
         .search-bar {
             width: min(640px, 92vw); height: 52px; border-radius: 999px;
             display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px;
-            margin-top: 38px;
+            margin-top: 26px;
             transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
         .search-bar:focus-within {
@@ -140,7 +140,7 @@
 
         /* Quick Access — Chrome/Brave style: circular tiles floating on the
            background (no card box), one centered row */
-        #dials-wrap { margin-top: 42px; display: flex; justify-content: center; }
+        #dials-wrap { margin-top: 30px; display: flex; justify-content: center; }
         .speed-dial {
             display: flex; flex-wrap: wrap; justify-content: center;
             gap: 22px 18px; max-width: 940px;
@@ -211,7 +211,7 @@
         .dial-add:hover .dial-favicon-wrap span { color: var(--accent); }
 
         /* Hidden Gems — Firefox-style slim row under the dials */
-        #gems-wrap { margin-top: 34px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        #gems-wrap { margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .gems-label {
             font-size: 10.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
             color: rgba(255,255,255,0.35);
@@ -224,7 +224,7 @@
 
         /* Module cards — Edge/Firefox style: quiet glass cards at the bottom */
         #widgets-row {
-            margin-top: 42px;
+            margin-top: 30px;
             display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start;
             gap: 14px; width: min(1080px, 100%);
         }

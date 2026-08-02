@@ -168,14 +168,20 @@ body.vertical-tabs.collapsed.tab-hover .tab-close { display: block; }
 .nav-circle-btn:hover { background: var(--bg-hover); color: var(--accent); }
 .nav-circle-btn span { font-size: 18px; }
 
-#url-bar-container { flex: 1; display: flex; justify-content: center; position: relative; }
+#url-bar-container { flex: 1; min-width: 0; display: flex; justify-content: center; position: relative; }
 #url-bar {
-    height: 30px; width: 100%; max-width: 55%; border-radius: var(--radius-pill); background: var(--glass-bg);
+    height: 30px; flex: 0 1 min(55%, 720px); min-width: 0; border-radius: var(--radius-pill); background: var(--glass-bg);
     border: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 8px;
-    transition: all 0.2s var(--ease); box-shadow: var(--glass-glow);
+    transition: flex-basis 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease); box-shadow: var(--glass-glow);
 }
 #url-bar:focus-within {
-    max-width: 70%; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,216,255,0.18);
+    flex-basis: min(70%, 940px); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,216,255,0.18);
+}
+@media (max-width: 900px) {
+    #toolbar { gap: 8px; padding: 0 8px; }
+    .nav-btn-group { gap: 2px; }
+    #url-bar { flex-basis: 45%; }
+    #url-bar:focus-within { flex-basis: 58%; }
 }
 #url-input {
     flex: 1; background: transparent; border: none; outline: none; color: var(--text);
@@ -187,7 +193,7 @@ body.vertical-tabs.collapsed.tab-hover .tab-close { display: block; }
 .url-right-icons span:hover { color: var(--accent); }
 
 .url-suggestions {
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); width: 70%; max-width: 600px;
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); width: min(70%, 600px); min-width: 0;
     background: var(--bg-surface); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
     border-radius: var(--radius-md); box-shadow: var(--glass-shadow); margin-top: 8px;
     display: none; flex-direction: column; z-index: 1000; overflow: hidden;
