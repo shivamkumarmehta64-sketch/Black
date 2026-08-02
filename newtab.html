@@ -342,7 +342,7 @@
         body.panel-open .icon-btn { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .icon-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.75); }
 
-        /* Chrome-style quick actions: Great Sage AI, Incognito, Fullscreen */
+        /* Chrome-style quick actions: Great Sage AI, Incognito, Close */
         #quick-actions {
             position: fixed; top: 16px; right: 16px; z-index: 20;
             display: flex; align-items: center; gap: 10px;
@@ -475,13 +475,11 @@
         <button class="qa-btn glass" id="btn-incognito" title="New InPrivate window">
             <svg viewBox="0 0 24 24"><path d="M12 3C9.79 3 8 4.79 8 7H4V9H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V9H20V7H16C16 4.79 14.21 3 12 3M8.5 12C9.33 12 10 12.67 10 13.5C10 14.33 9.33 15 8.5 15C7.67 15 7 14.33 7 13.5C7 12.67 7.67 12 8.5 12M12 7H9.5C9.5 5.62 10.62 4.5 12 4.5C13.38 4.5 14.5 5.62 14.5 7H12M15.5 12C16.33 12 17 12.67 17 13.5C17 14.33 16.33 15 15.5 15C14.67 15 14 14.33 14 13.5C14 12.67 14.67 12 15.5 12M8 17L9.6 15.4L11.2 17L12.8 15.4L14.4 17L15 16.4V19H9V16.4L8 17Z" /></svg>
         </button>
-        <button class="qa-btn glass" id="btn-fullscreen" title="Fullscreen">
-            <svg viewBox="0 0 24 24"><path d="M5 5H10V7H7V10H5V5M14 5H19V10H17V7H14V5M7 14H10V19H7V16H5V14H7M17 14V17H14V19H19V14H17Z" /></svg>
-        </button>
-        <button class="qa-btn glass close" id="btn-close" title="Close Black">
+        <button class="qa-btn glass" id="btn-close" title="Close Black">
             <svg viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" /></svg>
         </button>
     </div>
+        <div id="customize-panel" class="glass">
         <div class="cp-head">Customize</div>
         <div class="cp-section">
             <span class="cp-label">Wallpaper</span>
@@ -1348,9 +1346,6 @@
         });
         $('btn-incognito').addEventListener('click', function () {
             if (window.api && window.api.newWindow) window.api.newWindow(true);
-        });
-        $('btn-fullscreen').addEventListener('click', function () {
-            if (window.api && window.api.toggleFullscreen) window.api.toggleFullscreen();
         });
         $('btn-close').addEventListener('click', function () {
             if (window.api && window.api.closeWindow) window.api.closeWindow();
