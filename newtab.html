@@ -153,22 +153,30 @@
         .dial-favicon-wrap {
             width: 64px; height: 64px; border-radius: 50%; position: relative;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.07); overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.09);
+            background: rgba(4, 7, 13, 0.72); overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
             transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
         }
         .dial-card:hover .dial-favicon-wrap {
             transform: translateY(-3px);
-            border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-            background: rgba(255,255,255,0.1);
-            box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+            border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+            background: rgba(8, 13, 22, 0.85);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 12px color-mix(in srgb, var(--accent) 25%, transparent);
         }
-        .dial-letter { position: absolute; font-size: 26px; font-weight: 500; color: rgba(255,255,255,0.9); }
-        .dial-favicon-wrap img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+        .dial-letter {
+            position: absolute; font-size: 26px; font-weight: 600; color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+        }
+        .dial-favicon-wrap img {
+            position: absolute; width: 100%; height: 100%; object-fit: cover;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+        }
         .dial-name {
-            font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.8);
+            font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.92);
             max-width: 100%; padding: 0 4px;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
         }
         .dial-actions {
             position: absolute; top: -7px; right: -7px; display: flex; gap: 4px;
@@ -196,7 +204,7 @@
             border-style: dashed; border-color: rgba(255,255,255,0.22);
             background: rgba(10,16,30,0.3);
         }
-        .dial-add .dial-favicon-wrap span { font-size: 30px; font-weight: 200; line-height: 1; color: rgba(255,255,255,0.45); }
+        .dial-add .dial-favicon-wrap span { font-size: 30px; font-weight: 300; line-height: 1; color: rgba(255,255,255,0.75); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
         .dial-add:hover .dial-favicon-wrap { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .dial-add:hover .dial-favicon-wrap span { color: var(--accent); }
 
@@ -210,7 +218,7 @@
         .gem-card { width: 70px; gap: 8px; }
         .gem-card .dial-tile { width: 46px; height: 46px; }
         .gem-card .dial-favicon-wrap { width: 46px; height: 46px; }
-        .gem-card .dial-name { font-size: 10.5px; color: rgba(255,255,255,0.6); }
+        .gem-card .dial-name { font-size: 10.5px; color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
 
         /* Module cards — Edge/Firefox style: quiet glass cards at the bottom */
         #widgets-row {
@@ -353,7 +361,9 @@
         .swatch {
             aspect-ratio: 1; border-radius: 10px; cursor: pointer;
             border: 2px solid transparent; transition: transform 0.12s, border-color 0.15s;
+            overflow: hidden; position: relative;
         }
+        .swatch.wp img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .swatch:hover { transform: scale(1.08); }
         .swatch.active { border-color: #fff; }
         .cp-btn {
@@ -571,6 +581,14 @@
             ['Forest', 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)'],
             ['Royal', 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)'],
             ['Violet', 'linear-gradient(135deg, #42275a 0%, #734b6d 100%)']
+        ];
+        var WALLPAPERS = [
+            ['Noir Ember', 'wallpapers/noir-ember.png'],
+            ['Noir Abyss', 'wallpapers/noir-abyss.png'],
+            ['Noir Rune', 'wallpapers/noir-rune.png'],
+            ['Noir Sigil', 'wallpapers/noir-sigil.png'],
+            ['Noir Frost', 'wallpapers/noir-frost.png'],
+            ['Noir Smoke', 'wallpapers/noir-smoke.png']
         ];
         var ACCENTS = ['#38d9ff', '#8b5cf6', '#ffd54a', '#34d399', '#ff6b81'];
         var QUOTES = [
@@ -804,6 +822,23 @@
                 d.addEventListener('click', function () {
                     state.bgType = 'gradient';
                     state.bgIndex = i;
+                    applyState();
+                    saveState();
+                });
+                wrap.appendChild(d);
+            });
+            WALLPAPERS.forEach(function (w) {
+                var url = 'black-ui://newtab/' + w[1];
+                var d = document.createElement('div');
+                d.className = 'swatch wp' + (state.bgType === 'image' && state.bgVal === url ? ' active' : '');
+                d.title = w[0];
+                var img = document.createElement('img');
+                img.src = url;
+                img.alt = w[0];
+                d.appendChild(img);
+                d.addEventListener('click', function () {
+                    state.bgType = 'image';
+                    state.bgVal = url;
                     applyState();
                     saveState();
                 });
