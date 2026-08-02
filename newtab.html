@@ -206,7 +206,7 @@
             font-size: 10.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
             color: rgba(255,255,255,0.35);
         }
-        .gems-row { display: flex; gap: 18px; }
+        .gems-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 22px; max-width: 860px; }
         .gem-card { width: 70px; gap: 8px; }
         .gem-card .dial-tile { width: 46px; height: 46px; }
         .gem-card .dial-favicon-wrap { width: 46px; height: 46px; }
@@ -306,6 +306,35 @@
         body.panel-open .icon-btn { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .icon-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.75); }
 
+        /* Chrome-style quick actions: Great Sage AI, Incognito, Fullscreen */
+        #quick-actions {
+            position: fixed; top: 16px; right: 16px; z-index: 20;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .qa-btn {
+            width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: transform 0.15s, border-color 0.2s;
+        }
+        .qa-btn:hover { transform: translateY(-2px) scale(1.06); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+        .qa-btn svg { width: 21px; height: 21px; fill: rgba(255,255,255,0.8); }
+        #btn-ai { position: relative; }
+        #btn-ai::after {
+            content: ''; position: absolute; inset: -5px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(56,217,255,0.3), transparent 70%);
+            animation: qaPulse 2.6s ease-in-out infinite; z-index: -1;
+        }
+        @keyframes qaPulse { 0%,100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.14); } }
+
+        /* Weather widget */
+        body.widget-off-weather #weather-card { display: none; }
+        .weather-main { display: flex; align-items: center; gap: 13px; }
+        .weather-emoji { font-size: 36px; line-height: 1; }
+        .weather-temp { font-size: 27px; font-weight: 700; color: #fff; line-height: 1; }
+        .weather-city { font-size: 12.5px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+        .weather-desc { font-size: 12.5px; color: rgba(255,255,255,0.55); }
+        .weather-sub { font-size: 11.5px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
         #customize-panel {
             position: fixed; bottom: 68px; right: 18px; z-index: 19;
             width: 284px; max-height: calc(100vh - 96px); overflow-y: auto;
@@ -398,7 +427,17 @@
         <svg viewBox="0 0 24 24"><path d="M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21C13.66,21 15,19.66 15,18C15,17.56 14.83,17.18 14.56,16.9C14.29,16.61 14.13,16.23 14.13,15.77C14.13,14.71 15.02,13.82 16.08,13.82H18.5C20.43,13.82 22,12.25 22,10.32C22,6.28 17.5,3 12,3M7.5,12A1.5,1.5 0 0,1 6,10.5A1.5,1.5 0 0,1 7.5,9A1.5,1.5 0 0,1 9,10.5A1.5,1.5 0 0,1 7.5,12M10.5,8A1.5,1.5 0 0,1 9,6.5A1.5,1.5 0 0,1 10.5,5A1.5,1.5 0 0,1 12,6.5A1.5,1.5 0 0,1 10.5,8M15.5,8A1.5,1.5 0 0,1 14,6.5A1.5,1.5 0 0,1 15.5,5A1.5,1.5 0 0,1 17,6.5A1.5,1.5 0 0,1 15.5,8Z" /></svg>
     </button>
 
-    <div id="customize-panel" class="glass">
+    <div id="quick-actions">
+        <button class="qa-btn glass" id="btn-ai" title="Ask Great Sage — AI assistant">
+            <svg viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z" /><path d="M19 14L19.9 16.6L22.5 17.5L19.9 18.4L19 21L18.1 18.4L15.5 17.5L18.1 16.6L19 14Z" opacity="0.7" /></svg>
+        </button>
+        <button class="qa-btn glass" id="btn-incognito" title="New InPrivate window">
+            <svg viewBox="0 0 24 24"><path d="M12 3C9.79 3 8 4.79 8 7H4V9H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V9H20V7H16C16 4.79 14.21 3 12 3M8.5 12C9.33 12 10 12.67 10 13.5C10 14.33 9.33 15 8.5 15C7.67 15 7 14.33 7 13.5C7 12.67 7.67 12 8.5 12M12 7H9.5C9.5 5.62 10.62 4.5 12 4.5C13.38 4.5 14.5 5.62 14.5 7H12M15.5 12C16.33 12 17 12.67 17 13.5C17 14.33 16.33 15 15.5 15C14.67 15 14 14.33 14 13.5C14 12.67 14.67 12 15.5 12M8 17L9.6 15.4L11.2 17L12.8 15.4L14.4 17L15 16.4V19H9V16.4L8 17Z" /></svg>
+        </button>
+        <button class="qa-btn glass" id="btn-fullscreen" title="Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M5 5H10V7H7V10H5V5M14 5H19V10H17V7H14V5M7 14H10V19H7V16H5V14H7M17 14V17H14V19H19V14H17Z" /></svg>
+        </button>
+    </div>
         <div class="cp-head">Customize</div>
         <div class="cp-section">
             <span class="cp-label">Wallpaper</span>
@@ -423,6 +462,7 @@
             <label class="cp-toggle-row"><span>Hidden Gems</span><input type="checkbox" id="cp-w-gems" checked></label>
             <label class="cp-toggle-row"><span>Continue browsing</span><input type="checkbox" id="cp-w-continue" checked></label>
             <label class="cp-toggle-row"><span>Notes</span><input type="checkbox" id="cp-w-notes" checked></label>
+            <label class="cp-toggle-row"><span>Weather</span><input type="checkbox" id="cp-w-weather" checked></label>
             <label class="cp-toggle-row"><span>Ambient aurora</span><input type="checkbox" id="cp-aurora"></label>
         </div>
         <button class="cp-btn danger" id="btn-reset">Reset to defaults</button>
@@ -449,7 +489,7 @@
         </div>
 
         <div id="gems-wrap">
-            <div class="gems-label">Hidden Gems · free stuff &amp; VPNs</div>
+            <div class="gems-label">Hidden Gems · curated picks</div>
             <div class="gems-row" id="gems-row"></div>
         </div>
 
@@ -463,6 +503,22 @@
                     <div class="quote-text" id="quote-text" title="Click to copy">Every day is a new beginning.</div>
                     <div class="quote-author" id="quote-author"></div>
                 </div>
+            </section>
+
+            <section class="widget glass" id="weather-card">
+                <div class="widget-head">
+                    <span class="widget-title">Weather</span>
+                    <button class="widget-btn" id="weather-refresh" title="Refresh">↻</button>
+                </div>
+                <div class="weather-main">
+                    <span class="weather-emoji" id="weather-emoji">🌤️</span>
+                    <div>
+                        <div class="weather-temp" id="weather-temp">--°</div>
+                        <div class="weather-city" id="weather-city">Locating…</div>
+                    </div>
+                </div>
+                <div class="weather-desc" id="weather-desc"></div>
+                <div class="weather-sub" id="weather-sub"></div>
             </section>
 
             <section class="widget glass" id="continue-card">
@@ -568,17 +624,17 @@
         var HIDDEN_GEMS = [
             { name: 'FMHY', url: 'https://fmhy.net', blurb: 'freemediaheckyeah — the internet\'s biggest free-stuff wiki (~30k links)' },
             { name: 'Couch Potato', url: 'https://tbcpl.lol', blurb: 'free streaming directory: movies, TV, anime, manga, live TV, sports' },
-            { name: 'Proton VPN', url: 'https://protonvpn.com', blurb: 'free VPN with unlimited data and no ads' },
-            { name: 'Windscribe', url: 'https://windscribe.com', blurb: 'free VPN · 10 GB/month · P2P allowed' },
-            { name: 'PrivadoVPN', url: 'https://privadovpn.com', blurb: 'free VPN · 10 GB/month · P2P allowed' },
-            { name: 'Mullvad', url: 'https://mullvad.net', blurb: 'anonymous VPN · pay with cash or crypto · no email needed' },
+            { name: 'Proton VPN', url: 'https://protonvpn.com', blurb: 'the free VPN — unlimited data, no ads' },
+            { name: 'HackCheck', url: 'https://hackcheck.io', blurb: 'check if your email or phone was in a data breach' },
+            { name: 'Epieos', url: 'https://epieos.com', blurb: 'find out what\'s behind an email — OSINT email lookup' },
+            { name: 'IntelBase', url: 'https://intelbase.io', blurb: 'dark web search engine, no Tor needed' },
             { name: 'VesselFinder', url: 'https://www.vesselfinder.com', blurb: 'live ship tracking across the world' },
             { name: 'ADS-B Exchange', url: 'https://globe.adsbexchange.com', blurb: 'free live flight radar, no ads' },
             { name: 'Metadata2Go', url: 'https://www.metadata2go.com', blurb: 'reveal hidden metadata inside photos, PDFs and files' },
             { name: 'Web Academy', url: 'https://portswigger.net/web-security', blurb: 'free ethical-hacking & security training' },
             { name: 'CryptPad', url: 'https://cryptpad.fr', blurb: 'private, end-to-end encrypted docs, sheets and pads' }
         ];
-        var WIDGETS = ['quote', 'dials', 'gems', 'continue', 'notes'];
+        var WIDGETS = ['quote', 'dials', 'gems', 'continue', 'notes', 'weather'];
         var DEFAULTS = {
             bgType: 'gradient',
             bgIndex: 0,
@@ -589,7 +645,7 @@
             name: 'Shiva',
             aurora: false,
             quoteIndex: null,
-            widgets: { quote: true, dials: true, gems: true, continue: true, notes: true },
+            widgets: { quote: true, dials: true, gems: true, continue: true, notes: true, weather: true },
             dials: DEFAULT_DIALS
         };
         var state;
@@ -639,6 +695,75 @@
             });
         }
 
+        var WMO_CODES = {
+            0: ['☀️', 'Clear sky'], 1: ['🌤️', 'Mostly clear'], 2: ['⛅', 'Partly cloudy'], 3: ['☁️', 'Overcast'],
+            45: ['🌫️', 'Fog'], 48: ['🌫️', 'Icy fog'],
+            51: ['🌦️', 'Light drizzle'], 53: ['🌦️', 'Drizzle'], 55: ['🌦️', 'Heavy drizzle'], 56: ['🌦️', 'Freezing drizzle'], 57: ['🌦️', 'Freezing drizzle'],
+            61: ['🌧️', 'Light rain'], 63: ['🌧️', 'Rain'], 65: ['🌧️', 'Heavy rain'], 66: ['🌧️', 'Freezing rain'], 67: ['🌧️', 'Freezing rain'],
+            71: ['🌨️', 'Light snow'], 73: ['🌨️', 'Snow'], 75: ['🌨️', 'Heavy snow'], 77: ['🌨️', 'Snow grains'],
+            80: ['🌧️', 'Light showers'], 81: ['🌧️', 'Showers'], 82: ['🌧️', 'Violent showers'],
+            85: ['🌨️', 'Snow showers'], 86: ['🌨️', 'Snow showers'],
+            95: ['⛈️', 'Thunderstorm'], 96: ['⛈️', 'Thunderstorm + hail'], 99: ['⛈️', 'Thunderstorm + heavy hail']
+        };
+
+        function weatherFromCode(code) { return WMO_CODES[code] || ['🌡️', 'Weather']; }
+
+        function paintWeather(d) {
+            var w = weatherFromCode(d.code);
+            $('weather-emoji').textContent = w[0];
+            $('weather-temp').textContent = Math.round(d.t) + '°';
+            $('weather-city').textContent = d.city || 'Your location';
+            $('weather-desc').textContent = w[1];
+            $('weather-sub').textContent = 'Feels like ' + Math.round(d.feels) + '° · Wind ' + Math.round(d.wind) + ' km/h';
+        }
+
+        function loadWeather() {
+            var fail = function () {
+                $('weather-city').textContent = 'Weather unavailable';
+                $('weather-temp').textContent = '--°';
+                $('weather-desc').textContent = 'Tap refresh to retry';
+            };
+            var done = function (lat, lon) {
+                var geo = fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
+                    .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+                var w = fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+                    '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m')
+                    .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+                Promise.all([geo, w]).then(function (res) {
+                    var g = res[0], wj = res[1];
+                    if (!wj || !wj.current) { fail(); return; }
+                    var d = {
+                        code: wj.current.weather_code, t: wj.current.temperature_2m,
+                        feels: wj.current.apparent_temperature, wind: wj.current.wind_speed_10m,
+                        city: (g && (g.city || g.locality || g.principalSubdivision)) || 'Your location'
+                    };
+                    try { localStorage.setItem('black_nt_weather', JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
+                    paintWeather(d);
+                }).catch(fail);
+            };
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function (p) { done(p.coords.latitude, p.coords.longitude); },
+                    function () {
+                        $('weather-city').textContent = 'Location blocked';
+                        $('weather-desc').textContent = 'Allow location, then tap refresh';
+                    },
+                    { timeout: 8000, maximumAge: 600000 }
+                );
+            } else {
+                fail();
+            }
+        }
+
+        function renderWeather() {
+            if (state.widgets.weather === false) return;
+            try {
+                var cached = JSON.parse(localStorage.getItem('black_nt_weather') || 'null');
+                if (cached && cached.d && Date.now() - cached.t < 600000) { paintWeather(cached.d); return; }
+            } catch (e) {}
+            loadWeather();
+        }
+
         function applyState() {
             var root = document.documentElement.style;
             root.setProperty('--accent', state.accent);
@@ -664,6 +789,7 @@
             $('cp-aurora').disabled = reduceMotion;
             WIDGETS.forEach(function (key) { $('cp-w-' + key).checked = state.widgets[key] !== false; });
             renderQuote();
+            renderWeather();
             updateTime();
         }
 
@@ -1114,6 +1240,17 @@
             e.stopPropagation();
             document.body.classList.toggle('panel-open');
         });
+
+        $('btn-ai').addEventListener('click', function () {
+            if (window.api && window.api.openPanel) window.api.openPanel('ai');
+        });
+        $('btn-incognito').addEventListener('click', function () {
+            if (window.api && window.api.newWindow) window.api.newWindow(true);
+        });
+        $('btn-fullscreen').addEventListener('click', function () {
+            if (window.api && window.api.toggleFullscreen) window.api.toggleFullscreen();
+        });
+        $('weather-refresh').addEventListener('click', loadWeather);
         document.addEventListener('click', function (e) {
             var panel = $('customize-panel');
             if (document.body.classList.contains('panel-open') &&

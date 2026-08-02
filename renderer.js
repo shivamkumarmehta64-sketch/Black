@@ -2243,6 +2243,7 @@ document.querySelectorAll('[data-close]').forEach(el => {
         });
         window.api.onOpenPanel((p) => {
             if (p === 'settings') openSettings();
+            else if (p === 'ai') toggleAiPanel();
             else openSidebarView(p);
         });
         window.api.onOpenInTab((url) => {
