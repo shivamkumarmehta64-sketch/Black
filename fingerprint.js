@@ -1,25 +1,14 @@
 (function() {
   try {
-    // --- Canvas fingerprinting protection ---
+    // --- Canvas fingerprinting protection (toDataURL noised; toBlob left intact
+    // so canvas-consuming apps never hang or receive corrupted images) ---
     const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
     HTMLCanvasElement.prototype.toDataURL = function(...args) {
-      const imgData = origToDataURL.apply(this, args);
-      return addNoiseToBase64(imgData);
-    };
-
-    const origToBlob = HTMLCanvasElement.prototype.toBlob;
-    HTMLCanvasElement.prototype.toBlob = function(callback, ...args) {
-      origToBlob.call(this, function(blob) {
-        if (blob) {
-          blob.text().then(text => {
-            const noisy = addNoiseToBase64(btoa(text));
-            atob(noisy);
-            callback(new Blob([noisy], { type: blob.type }));
-          });
-        } else {
-          callback(null);
-        }
-      }, ...args);
+      try {
+        return addNoiseToBase64(origToDataURL.apply(this, args));
+      } catch (e) {
+        return origToDataURL.apply(this, args);
+      }
     };
 
     function addNoiseToBase64(base64) {
