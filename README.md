@@ -57,6 +57,16 @@ If installing executable releases on Windows, run `Trust_Certificate_First.bat` 
 
 ---
 
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, style guide, and areas that need help.
+
+## 📋 Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the condensed build plan.
+
+---
+
 ## 📄 License
 
 [ISC License](LICENSE) © Shivam Kumar Mehta
