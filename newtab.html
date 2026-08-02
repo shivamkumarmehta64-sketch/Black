@@ -759,17 +759,24 @@
                     paintWeather(d);
                 }).catch(fail);
             };
+            var viaIp = function () {
+                $('weather-city').textContent = 'Locating by IP…';
+                fetch('https://ipwho.is')
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (j) {
+                        if (!j || typeof j.latitude !== 'number' || typeof j.longitude !== 'number') { fail(); return; }
+                        done(j.latitude, j.longitude);
+                    })
+                    .catch(fail);
+            };
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     function (p) { done(p.coords.latitude, p.coords.longitude); },
-                    function () {
-                        $('weather-city').textContent = 'Location blocked';
-                        $('weather-desc').textContent = 'Allow location, then tap refresh';
-                    },
+                    function () { viaIp(); },
                     { timeout: 8000, maximumAge: 600000 }
                 );
             } else {
-                fail();
+                viaIp();
             }
         }
 
@@ -828,7 +835,7 @@
                 wrap.appendChild(d);
             });
             WALLPAPERS.forEach(function (w) {
-                var url = 'black-ui://newtab/' + w[1];
+                var url = 'black-ui://wallpapers/' + w[1];
                 var d = document.createElement('div');
                 d.className = 'swatch wp' + (state.bgType === 'image' && state.bgVal === url ? ' active' : '');
                 d.title = w[0];
