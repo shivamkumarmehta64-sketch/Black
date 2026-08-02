@@ -1258,15 +1258,32 @@ app.whenReady().then(() => {
         }
       }
 
-      // YouTube ad stripping
+      // YouTube ad stripping — 3 layers (network rules above + this DOM/API layer,
+      // ported from the proven ytube/mtube WebView2 clients). NOTE: no window.fetch
+      // override — re-wrapping youtubei responses with the original compressed
+      // headers breaks the player response (decompression mismatch → video won't play).
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
         wc.executeJavaScript(`
           (function() {
             try {
-              const adKeys = [
-                'adPlacements','playerAds','adSlots','promotedVideoRenderer',
-                'inlineAdLayoutRenderer','carouselAdRenderer','searchVideoRenderer',
-                'adBreak','adBreakBegin','adBreakEnd','adBreakLength',
+              var adKeys = [
+                'adPlacements','adSlots','playerAds','adBreak','adBreakHeartbeatParams',
+                'promotedSparklesWebRenderer','promotedVideoRenderer',
+                'compactPromotedVideoRenderer','compactPromotedItemRenderer',
+                'backgroundPromoRenderer','statementBannerRenderer',
+                'brandVideoShelfRenderer','inlineAdLayoutRenderer','adSlotRenderer',
+                'adBreakParams','playerAdParams','adTagUrl','adTagUrls',
+                'companionAd','instreamVideoAd','overlayAd','promotedUrl',
+                'searchPyvRenderer','actionCompanionAdRenderer','displayAdRenderer',
+                'videoMastheadAdRenderer','mastheadAdRenderer','mastheadAd',
+                'midrolls','prerolls','postrolls',
+                'adIsActive','adIsPlaying','adIsPaused','adIsSkippable',
+                'adType','adMode','adFormat','adSource','adNetwork',
+                'cumulativeAds','adCount','totalAds','remainingAds',
+                'masthead','sparkles','promoted','promo','promotion',
+                'mealbar','legalBanner','enforcementMessage',
+                'bannerPromo','displayAd','actionCompanion','inFeedAd',
+                'adBreakBegin','adBreakEnd','adBreakLength',
                 'adBreakOffset','adBreakType','adPlacement','adInfoRenderer',
                 'adFeedbackDialog','adVideoId','adVideoIds','adBreakIndex',
                 'interstitialPlayerConfig','interstitialPlayerOverlay','midroll',
@@ -1278,47 +1295,123 @@ app.whenReady().then(() => {
                 'adTriggerValue','adTriggerPosition','adTriggerOffset'
               ];
 
-              function stripAds(obj) {
-                if (!obj || typeof obj !== 'object') return;
-                if (Array.isArray(obj)) {
-                  obj.forEach(stripAds);
-                  return;
-                }
-                Object.keys(obj).forEach(key => {
-                  if (adKeys.includes(key)) {
-                    delete obj[key];
-                  } else {
-                    stripAds(obj[key]);
+              function stripAdKeys(obj) {
+                if (!obj || typeof obj !== 'object') return obj;
+                try {
+                  var keys = Object.keys(obj);
+                  for (var i = 0; i < keys.length; i++) {
+                    var k = keys[i];
+                    if (adKeys.indexOf(k) !== -1) { delete obj[k]; }
+                    else if (obj[k] && typeof obj[k] === 'object') { stripAdKeys(obj[k]); }
                   }
-                });
+                } catch(e) {}
+                return obj;
               }
 
-              const origParse = JSON.parse;
-              JSON.parse = function(t, r) {
-                try {
-                  const obj = origParse.call(this, t, r);
-                  if (obj && typeof obj === 'object') stripAds(obj);
-                  return obj;
-                } catch(e) {
-                  return origParse.call(this, t, r);
-                }
+              var _origParse = JSON.parse;
+              JSON.parse = function() {
+                try { return stripAdKeys(_origParse.apply(this, arguments)); }
+                catch(e) { return _origParse.apply(this, arguments); }
               };
 
-              const origFetch = window.fetch;
-              window.fetch = function(i, init) {
-                return origFetch.apply(this, arguments).then(function(r) {
-                  const url = typeof i === 'string' ? i : (i && i.url ? i.url : '');
-                  if (url.includes('youtubei.googleapis.com') || url.includes('/youtubei/v1/')) {
-                    return r.clone().json().then(function(d) {
-                      stripAds(d);
-                      return new Response(JSON.stringify(d), { status: r.status, headers: r.headers });
-                    }).catch(function() { return r; });
+              var style = document.createElement('style');
+              try {
+                style.textContent = [
+                  'ytd-ad-slot-renderer,ytd-in-feed-ad-layout-renderer,',
+                  'ytd-banner-promo-renderer,ytd-statement-banner-renderer,',
+                  'ytd-display-ad-renderer,.ytp-ad-module,.ytp-ad-player-overlay,',
+                  '.ytp-ad-image-overlay,.ytp-ad-text-overlay,.ytp-ce-element,',
+                  '.ytp-suggested-action,#masthead-ad,#player-ads,',
+                  'ytd-promoted-sparkles-web-renderer,ytd-companion-ad-renderer,',
+                  'ytd-enforcement-message-view-model,tp-yt-paper-dialog:has(ytd-enforcement-message-view-model)',
+                  '{display:none!important}'
+                ].join('');
+                document.head.appendChild(style);
+              } catch(e) { console.log('[Black] YT ad CSS:', e.message); }
+
+              function checkAds() {
+                try {
+                  var video = document.querySelector('video');
+                  if (video) {
+                    var ad = document.querySelector('.ad-showing') ||
+                             document.querySelector('.ytp-ad-player-overlay');
+                    if (ad) {
+                      video.muted = true;
+                      video.playbackRate = 16.0;
+                      var skip = document.querySelector('.ytp-ad-skip-button') ||
+                                 document.querySelector('.ytp-ad-skip-button-modern');
+                      if (skip) skip.click();
+                    } else if (video.playbackRate === 16.0) {
+                      video.playbackRate = 1.0;
+                      video.muted = false;
+                    }
                   }
-                  return r;
-                });
-              };
+                  var popup = document.querySelector('ytd-enforcement-message-view-model');
+                  if (popup) {
+                    var btn = popup.querySelector('button') || document.querySelector('.yt-spec-button-shape-next');
+                    if (btn) btn.click();
+                    popup.remove();
+                  }
+                } catch(e) {}
+                setTimeout(checkAds, 500);
+              }
+              checkAds();
+
+              try {
+                new MutationObserver(function() {
+                  try {
+                    var els = document.querySelectorAll(
+                      'ytd-ad-slot-renderer,.ytp-ad-module,ytd-promoted-sparkles-web-renderer,ytd-enforcement-message-view-model');
+                    for (var i = 0; i < els.length; i++) els[i].style.display = 'none';
+                  } catch(e) {}
+                }).observe(document.documentElement, {childList:true, subtree:true});
+              } catch(e) {}
+
+              var sponsorCache = {};
+              function skipSponsors(videoId) {
+                if (!videoId || sponsorCache[videoId]) return;
+                sponsorCache[videoId] = true;
+                try {
+                  var xhr = new XMLHttpRequest();
+                  xhr.open('GET',
+                    'https://sponsor.ajay.app/api/skipSegments?videoID=' + videoId +
+                    '&categories[]=sponsor&categories[]=selfpromo&categories[]=intro&categories[]=outro');
+                  xhr.onload = function() {
+                    try {
+                      var segs = _origParse(xhr.responseText);
+                      if (!segs || !segs.length) return;
+                      sponsorCache[videoId] = segs;
+                      var video = document.querySelector('video');
+                      if (!video) return;
+                      video.addEventListener('timeupdate', function() {
+                        for (var i = 0; i < segs.length; i++) {
+                          var s = segs[i];
+                          if (s.segment && s.segment.length === 2 &&
+                              video.currentTime >= s.segment[0] &&
+                              video.currentTime < s.segment[1]) {
+                            video.currentTime = s.segment[1];
+                          }
+                        }
+                      });
+                    } catch(e) {}
+                  };
+                  xhr.send();
+                } catch(e) {}
+              }
+
+              function detectVideoId() {
+                try {
+                  var m = window.location.href.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+                  if (m) skipSponsors(m[1]);
+                } catch(e) {}
+              }
+              var _origPush = history.pushState;
+              history.pushState = function() { _origPush.apply(this, arguments); setTimeout(detectVideoId, 1500); };
+              window.addEventListener('popstate', function() { setTimeout(detectVideoId, 1500); });
+              setTimeout(detectVideoId, 3000);
             } catch(e) { console.log('[Black] YT adblock:', e.message); }
           })();
+          true;
         `, true).catch(() => {});
       }
       } catch (e) {
