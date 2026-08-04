@@ -317,6 +317,9 @@ app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'disable_non_pro
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport,HardwareMediaKeyHandling');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
 // Stop Chromium from marking occluded windows as hidden — this is the root cause
 // of YouTube pausing when the Black window is covered by another window.
@@ -815,6 +818,17 @@ app.whenReady().then(() => {
 
       // ── Government domains are exempt — portals must never be broken by ad filtering
       if (isGovUrl(details)) { passOrUpgrade(details, callback); return; }
+
+      // ── YouTube streaming CDNs are exempt — video media fragments & manifests must never be blocked
+      try {
+        const u = new URL(details.url);
+        const h = u.hostname.toLowerCase();
+        if (h === 'googlevideo.com' || h.endsWith('.googlevideo.com') ||
+            h === 'ytimg.com' || h.endsWith('.ytimg.com')) {
+          passOrUpgrade(details, callback);
+          return;
+        }
+      } catch (e) {}
 
       const type = details.resourceType;
 
