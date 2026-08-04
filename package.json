@@ -45,6 +45,9 @@
         "portable"
       ],
       "icon": "icon.ico",
+      "legalTrademarks": "Black Browser",
+      "companyName": "Shivam Mehta",
+      "fileDescription": "Black Browser — Fast. Private. Secure.",
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "nsis": {

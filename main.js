@@ -304,7 +304,8 @@ function setupContextMenu() {
 
 setupContextMenu();
 
-// Windows-style toast notifications from Great Sage (must be set before whenReady)
+// Set official app name & AppUserModelID for Windows Volume Mixer & System Media Transport Controls
+app.name = 'Black Browser';
 if (process.platform === 'win32') app.setAppUserModelId('com.black.browser');
 
 // Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
