@@ -21,6 +21,7 @@ const DOM = {
     menuZoom: document.getElementById('menu-zoom'),
     mzLabel: document.getElementById('mz-label'),
     loadingBar: document.getElementById('loading-bar'),
+    urlBar: document.getElementById('url-bar'),
     sidebarRail: document.getElementById('sidebar-rail'),
     sidebarPanel: document.getElementById('sidebar-panel'),
     sbContent: document.getElementById('sb-content'),
@@ -148,6 +149,7 @@ function createTab(url = NEWTAB_URL, isPinned = false, activate = true) {
     const favEl = document.createElement('img');
     favEl.className = 'tab-favicon';
     favEl.src = 'icon.png';
+    favEl.addEventListener('error', () => faviconFallback(favEl, url));
 
     const titleEl = document.createElement('span');
     titleEl.className = 'tab-title';
@@ -230,6 +232,7 @@ function setupTabEvents(tab) {
     tab.wv.addEventListener('did-start-loading', () => {
         if (activeTabId === tab.id) {
             DOM.loadingBar.style.display = 'block';
+            DOM.urlBar.classList.add('loading');
             DOM.btnReload.innerHTML = '<span class="material-icons-round">close</span>';
         }
     });
@@ -238,6 +241,7 @@ function setupTabEvents(tab) {
         if (tab.isSleeping) return;
         if (activeTabId === tab.id) {
             DOM.loadingBar.style.display = 'none';
+            DOM.urlBar.classList.remove('loading');
             DOM.btnReload.innerHTML = '<span class="material-icons-round">refresh</span>';
             DOM.urlInput.value = cleanUrlBar(tab.wv.getURL());
             updateNavButtons();
@@ -269,8 +273,12 @@ function setupTabEvents(tab) {
     });
 
     tab.wv.addEventListener('page-favicon-updated', (e) => {
-        if (e.favicons && e.favicons.length > 0) {
-            tab.el.querySelector('.tab-favicon').src = e.favicons[0];
+        setTabFavicon(tab.el.querySelector('.tab-favicon'), e.favicons, tab.url);
+    });
+
+    tab.wv.addEventListener('did-start-navigation', (e) => {
+        if (e.isMainFrame && e.url && !e.url.startsWith('black-ui:')) {
+            setTabFavicon(tab.el.querySelector('.tab-favicon'), null, e.url);
         }
     });
 
@@ -479,7 +487,7 @@ if (window.api && window.api.onMemoryPressure) {
     });
 }
 
-// ── Security Center (OSINT hub) & Great Sage security tools ────────────────
+// ── Security Center (OSINT hub) & assistant security tools ────────────────
 async function osintRun(type, param) {
     try { return await window.api.osintCheck(type, param); }
     catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
@@ -513,7 +521,7 @@ async function renderSecurityHub(content) {
     const wrap = document.createElement('div');
 
     // 1. Local protection posture
-    const posture = secCard('shield', 'Your protection right now', 'Black is defending you with these built-in layers.');
+    const posture = secCard('shield', 'Your protection right now', 'Black Firefox is defending you with these built-in layers.');
     let shields = null, advisor = null;
     if (window.api) {
         try { shields = await window.api.shieldsStatus(); } catch (e) {}
@@ -537,7 +545,7 @@ async function renderSecurityHub(content) {
     wrap.appendChild(posture);
 
     // 2. OSINT tools
-    const tools = secCard('radar', 'OSINT self-check tools', 'Free, keyless, privacy-first — Great Sage can explain every result. "Check password" never sends your password: only the first 5 chars of its hash (k-anonymity).');
+    const tools = secCard('radar', 'OSINT self-check tools', 'Free, keyless, privacy-first — the assistant can explain every result. "Check password" never sends your password: only the first 5 chars of its hash (k-anonymity).');
 
     const pwRow = document.createElement('div');
     pwRow.className = 'sec-row';
@@ -600,9 +608,9 @@ async function renderSecurityHub(content) {
     askRow.style.justifyContent = 'flex-end';
     const askBtn = document.createElement('button');
     askBtn.className = 'sec-btn';
-    askBtn.style.borderColor = 'rgba(139,92,246,0.4)';
+    askBtn.style.borderColor = 'rgba(0,96,223,0.5)';
     askBtn.style.color = '#b9a6ff';
-    askBtn.textContent = 'Ask Great Sage to explain';
+    askBtn.textContent = 'Ask the assistant to explain';
     const askRes = document.createElement('div');
     askRes.className = 'sec-result';
     askRow.appendChild(askBtn);
@@ -624,7 +632,7 @@ async function renderSecurityHub(content) {
     content.appendChild(wrap);
 }
 
-// Great Sage security suggestion chips (Windows Copilot style)
+// Assistant security suggestion chips (Windows Copilot style)
 document.querySelectorAll('.ai-chip').forEach(chip => {
     chip.addEventListener('click', async () => {
         const kind = chip.dataset.chip;
@@ -655,7 +663,7 @@ document.querySelectorAll('.ai-chip').forEach(chip => {
     });
 });
 
-// Windows-style notifications from Great Sage
+// Windows-style notifications from the assistant
 function securityNotify(title, body) {
     if (window.api && window.api.securityNotify) window.api.securityNotify(title, body).catch(() => {});
 }
@@ -666,7 +674,7 @@ if (window.api && window.api.onAdvisorBlocked) {
         DOM.urlIcon.style.color = '#ff6b81';
         DOM.urlIcon.title = 'Site Advisor blocked ' + d.category + ': ' + host;
         showToast('Site Advisor blocked a dangerous site (' + d.category + '): ' + host);
-        securityNotify('Great Sage Security Alert', 'Site Advisor blocked a ' + d.category + ' site: ' + host + '. This was likely a scam or phishing attempt.');
+        securityNotify('Security Alert', 'Site Advisor blocked a ' + d.category + ' site: ' + host + '. This was likely a scam or phishing attempt.');
         setTimeout(() => { DOM.urlIcon.style.color = ''; }, 8000);
     });
 }
@@ -839,7 +847,7 @@ document.querySelectorAll('.rail-btn').forEach(btn => {
 });
 DOM.btnSbClose.addEventListener('click', () => { DOM.sidebarPanel.classList.remove('open'); });
 
-// ── AI Assistant (Great Sage) ─────────────────────────────────
+// ── AI Assistant ─────────────────────────────────
 const AI_PRESETS = {
     opencode:   { baseUrl: 'https://opencode.ai/zen/v1',  model: 'deepseek-v4-flash-free' },
     openai:     { baseUrl: 'https://api.openai.com/v1',  model: 'gpt-4o-mini' },
@@ -848,7 +856,7 @@ const AI_PRESETS = {
     ollama:     { baseUrl: 'http://localhost:11434/v1',  model: 'llama3.1' },
     custom:     { baseUrl: '', model: '' }
 };
-const DEFAULT_SAGE_PROMPT = 'You are the Great Sage — a calm, precise, analytical intelligence. Answer concisely and accurately, reason step by step for complex questions, and stay helpful, neutral and reliable.';
+const DEFAULT_SAGE_PROMPT = 'You are a calm, precise, analytical assistant. Answer concisely and accurately, reason step by step for complex questions, and stay helpful, neutral and reliable.';
 let aiConfig = { provider: 'opencode', baseUrl: AI_PRESETS.opencode.baseUrl, apiKey: '', model: AI_PRESETS.opencode.model, temperature: 0.7, maxTokens: 1024, systemPrompt: DEFAULT_SAGE_PROMPT };
 let aiHistory = [];
 let aiStreaming = false;
@@ -867,7 +875,7 @@ function aiAppendMsg(role, text, typing) {
     return bubble;
 }
 function aiShowWelcome() {
-    DOM.aiMessages.innerHTML = '<div class="ai-welcome"><span class="material-icons-round ai-welcome-icon">auto_awesome</span><div>I am the Great Sage.</div><div class="ai-welcome-sub">Ask me anything. Configure your AI provider via the settings button above.</div></div>';
+    DOM.aiMessages.innerHTML = '<div class="ai-welcome"><span class="material-icons-round ai-welcome-icon">auto_awesome</span><div>I\'m your browser assistant.</div><div class="ai-welcome-sub">Ask me anything. Configure your AI provider via the settings button above.</div></div>';
 }
 function toggleAiPanel() {
     DOM.aiPanel.classList.toggle('open');
@@ -1074,13 +1082,41 @@ function checkBookmarkStatus() {
     DOM.btnBookmark.style.color = isSaved ? 'var(--accent-warm)' : '';
 }
 
+function sbEmpty(container, icon, text) {
+    const e = document.createElement('div');
+    e.className = 'sb-empty';
+    e.innerHTML = `<span class="material-icons-round sb-empty-icon">${icon}</span><div>${text}</div>`;
+    container.appendChild(e);
+}
+
+const FAV_FALLBACK_COLORS = ['#0060df', '#0a84ff', '#12a594', '#7c6cf6', '#ffd54a', '#f97316', '#d6409f'];
+function faviconFallback(el, url) {
+    if (!el) return;
+    let host = '';
+    try { host = new URL(url || '').hostname.replace(/^www\./, ''); } catch (e) {}
+    const letter = (host || '?').charAt(0).toUpperCase();
+    let hash = 0;
+    for (let i = 0; i < (host || 'x').length; i++) hash = (hash * 31 + (host || 'x').charCodeAt(i)) >>> 0;
+    el.classList.add('fallback');
+    el.removeAttribute('src');
+    el.textContent = letter;
+    el.style.background = 'linear-gradient(135deg, ' + FAV_FALLBACK_COLORS[hash % FAV_FALLBACK_COLORS.length] + ', ' + FAV_FALLBACK_COLORS[(hash + 3) % FAV_FALLBACK_COLORS.length] + ')';
+}
+function setTabFavicon(el, favicons, url) {
+    if (!el) return;
+    if (favicons && favicons.length > 0) {
+        el.classList.remove('fallback');
+        el.textContent = '';
+        el.src = favicons[0];
+    } else {
+        faviconFallback(el, url);
+    }
+}
+
 function renderBookmarks(container) {
     container.innerHTML = '';
     if (!savedBookmarks.length) {
-        const e = document.createElement('div');
-        e.className = 'sb-empty';
-        e.textContent = 'No bookmarks yet. Press Ctrl+D on any page to save one.';
-        container.appendChild(e);
+        sbEmpty(container, 'star_border', 'No bookmarks yet. Press Ctrl+D on any page to save one.');
         return;
     }
     savedBookmarks.forEach(b => {
@@ -1110,10 +1146,7 @@ function renderBookmarks(container) {
 function renderHistory(container) {
     container.innerHTML = '';
     if (!savedHistory.length) {
-        const e = document.createElement('div');
-        e.className = 'sb-empty';
-        e.textContent = 'No browsing history yet.';
-        container.appendChild(e);
+        sbEmpty(container, 'history', 'No browsing history yet. Pages you visit will appear here.');
         return;
     }
     savedHistory.forEach(h => {
@@ -1180,10 +1213,7 @@ function renderReading(container) {
     container.appendChild(act);
 
     if (!readingList.length) {
-        const e = document.createElement('div');
-        e.className = 'sb-empty';
-        e.textContent = 'Reading list is empty. Save pages to read later.';
-        container.appendChild(e);
+        sbEmpty(container, 'bookmarks', 'Reading list is empty. Save pages to read later.');
         return;
     }
     readingList.forEach(r => {
@@ -1220,10 +1250,7 @@ function refreshDownloadsPanel() {
 function renderDownloads(container) {
     container.innerHTML = '';
     if (!downloads.length) {
-        const e = document.createElement('div');
-        e.className = 'sb-empty';
-        e.textContent = 'No downloads yet. Files save to the location you choose.';
-        container.appendChild(e);
+        sbEmpty(container, 'download', 'No downloads yet. Files save to the location you choose.');
         return;
     }
     if (downloads.some(d => d.state === 'Complete' || d.state === 'Cancelled')) {
@@ -1263,7 +1290,7 @@ function formatBytes(bytes) {
 
 // --- Extensions, Capture, QR, Groups & More (Chrome/Edge parity) ---
 
-const GROUP_COLORS = ['#38d9ff', '#8b5cf6', '#34d399', '#ffd54a', '#ff6b81', '#f97316'];
+const GROUP_COLORS = ['#0060df', '#0a84ff', '#34d399', '#ffd54a', '#ff6b81', '#f97316'];
 
 async function openExtensions() {
     DOM.extModal.style.display = 'flex';
@@ -1382,7 +1409,7 @@ function openQR() {
         DOM.qrCanvas.width = 240;
         DOM.qrCanvas.height = 240;
         QRCode.toCanvas(DOM.qrCanvas, url, { width: 240, margin: 1,
-            color: { dark: '#0b1220', light: '#eaf6ff' } }, (err) => {
+            color: { dark: '#121216', light: '#f0f0f5' } }, (err) => {
             if (err) showToast('QR failed: ' + err.message);
         });
     } else {
@@ -1721,7 +1748,7 @@ const READER_JS = `(function(){
     const doc = pick.cloneNode(true);
     doc.querySelectorAll('script,style,nav,header,footer,aside,iframe,form,button,svg,canvas,video,audio,noscript,ins,.ad,.ads,.advert,.advertisement,.banner').forEach(function(n){ n.remove(); });
     const title = document.title || 'Untitled';
-    const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Georgia,"Times New Roman",serif;background:#0b1220;color:#dbe7f4;max-width:720px;margin:0 auto;padding:56px 28px;line-height:1.8;font-size:19px}h1{font-size:30px;margin:0 0 8px;color:#fff}p{margin:0 0 1.2em}img{max-width:100%;border-radius:10px;margin:12px 0}a{color:#38d9ff}pre,code{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 7px;font-family:Consolas,monospace;font-size:15px}blockquote{border-left:3px solid #38d9ff;margin:0;padding-left:18px;opacity:.85}.reader-bar{position:fixed;top:0;left:0;right:0;background:rgba(10,16,30,.92);backdrop-filter:blur(14px);border-bottom:1px solid rgba(56,216,255,.2);display:flex;align-items:center;justify-content:space-between;padding:10px 20px;font-family:Inter,-apple-system,sans-serif;font-size:13px;color:#8aa6c4;z-index:999}button{background:rgba(56,216,255,.12);border:1px solid #38d9ff;color:#38d9ff;border-radius:20px;padding:7px 16px;cursor:pointer;font-size:12px;font-family:Inter,sans-serif}button:hover{background:rgba(56,216,255,.25)}</style></head><body><div class="reader-bar"><span>Immersive Reader</span><button onclick="location.reload()">Exit Reader</button></div><article><h1>' + title + '</h1>' + doc.innerHTML + '</article></body></html>';
+    const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Georgia,"Times New Roman",serif;background:#121216;color:#e3e7ef;max-width:720px;margin:0 auto;padding:56px 28px;line-height:1.8;font-size:19px}h1{font-size:30px;margin:0 0 8px;color:#fff}p{margin:0 0 1.2em}img{max-width:100%;border-radius:10px;margin:12px 0}a{color:#0a84ff}pre,code{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 7px;font-family:Consolas,monospace;font-size:15px}blockquote{border-left:3px solid #0060df;margin:0;padding-left:18px;opacity:.85}.reader-bar{position:fixed;top:0;left:0;right:0;background:rgba(23,23,28,.92);backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,96,223,.4);display:flex;align-items:center;justify-content:space-between;padding:10px 20px;font-family:Inter,-apple-system,sans-serif;font-size:13px;color:#9aa7bd;z-index:999}button{background:rgba(0,96,223,.2);border:1px solid #0a84ff;color:#7db6ff;border-radius:20px;padding:7px 16px;cursor:pointer;font-size:12px;font-family:Inter,sans-serif}button:hover{background:rgba(0,96,223,.32)}</style></head><body><div class="reader-bar"><span>Immersive Reader</span><button onclick="location.reload()">Exit Reader</button></div><article><h1>' + title + '</h1>' + doc.innerHTML + '</article></body></html>';
     document.open(); document.write(html); document.close();
   } catch(e) {}
 })();`;
@@ -2004,7 +2031,7 @@ async function renderSsdCard(card, h, p, fill, note, force) {
     }
     const wear = d.wear >= 0 ? d.wear : 0;
     const healthPct = Math.max(0, 100 - wear);
-    const color = healthPct > 60 ? 'linear-gradient(90deg, #34d399, #38d9ff)' : healthPct > 30 ? 'linear-gradient(90deg, #ffd54a, #ff9f43)' : 'linear-gradient(90deg, #ff6b81, #ff4757)';
+    const color = healthPct > 60 ? 'linear-gradient(90deg, #34d399, #0a84ff)' : healthPct > 30 ? 'linear-gradient(90deg, #ffd54a, #ff9f43)' : 'linear-gradient(90deg, #ff6b81, #ff4757)';
     if (fill) {
         fill.style.width = healthPct + '%';
         fill.style.background = color;
@@ -2252,7 +2279,7 @@ document.querySelectorAll('[data-close]').forEach(el => {
     }
     if (isIncognito) {
         DOM.incognitoBadge.style.display = 'inline-block';
-        document.title = 'InPrivate — Black Browser';
+        document.title = 'InPrivate — Black Firefox';
     }
 
     if (window.api) {

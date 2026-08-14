@@ -1,5 +1,5 @@
 /**
- * build-icon.js — Multi-resolution .ico generator for Black Browser
+ * build-icon.js — Multi-resolution .ico generator for Black Firefox
  * Produces: 16, 32, 48, 128, 256 px layers in a single icon.ico
  *
  * Run:  node build-icon.js

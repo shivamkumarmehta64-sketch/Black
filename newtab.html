@@ -7,7 +7,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap');
         :root {
-            --accent: #38d9ff;
+            --accent: #0060df;
             --dim: 0.28;
             --glass-blur: 16px;
             --radius-md: 14px;
@@ -16,7 +16,7 @@
             --nt-tab: 1;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: #05080f; }
+        html, body { background: #121216; }
         body {
             font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
             color: #fff;
@@ -31,23 +31,23 @@
 
         #bg {
             position: fixed; inset: 0; z-index: 0;
-            background: linear-gradient(160deg, #05080f 0%, #0b1220 100%);
+            background: linear-gradient(160deg, #121216 0%, #17171c 100%);
             background-size: cover; background-position: center;
             transition: opacity 0.35s ease;
         }
         #bg-tint {
             position: fixed; inset: 0; z-index: 0; pointer-events: none;
             background:
-                radial-gradient(120% 120% at 50% 38%, transparent 42%, rgba(5,8,15,0.55) 100%),
-                rgba(5,8,15,var(--dim));
+                radial-gradient(120% 120% at 50% 38%, transparent 42%, rgba(18,18,22,0.55) 100%),
+                rgba(18,18,22,var(--dim));
         }
         #aurora {
             position: fixed; inset: 0; z-index: 0; pointer-events: none;
             opacity: 0; transition: opacity 0.5s ease; will-change: transform;
             background:
-                radial-gradient(40% 35% at 18% 14%, rgba(56,216,255,0.14), transparent 70%),
-                radial-gradient(45% 40% at 82% 86%, rgba(139,92,246,0.14), transparent 70%),
-                radial-gradient(30% 26% at 62% 4%, rgba(56,216,255,0.08), transparent 70%);
+                radial-gradient(40% 35% at 18% 14%, rgba(0,96,223,0.16), transparent 70%),
+                radial-gradient(45% 40% at 82% 86%, rgba(124,108,246,0.14), transparent 70%),
+                radial-gradient(30% 26% at 62% 4%, rgba(0,96,223,0.1), transparent 70%);
         }
         body.aurora #aurora { opacity: 0.75; animation: auroraDrift 26s ease-in-out infinite alternate; }
         @keyframes auroraDrift {
@@ -187,7 +187,7 @@
         .dial-card:hover .dial-actions { opacity: 1; }
         .dial-btn {
             width: 23px; height: 23px; border-radius: 50%; cursor: pointer;
-            background: rgba(5,8,15,0.85); border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(23,23,28,0.85); border: 1px solid rgba(255,255,255,0.2);
             color: rgba(255,255,255,0.85); font-size: 11px; line-height: 1;
             display: flex; align-items: center; justify-content: center;
             transition: border-color 0.15s, color 0.15s;
@@ -342,7 +342,7 @@
         body.panel-open .icon-btn { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
         .icon-btn svg { width: 20px; height: 20px; fill: rgba(255,255,255,0.75); }
 
-        /* Chrome-style quick actions: Great Sage AI, Incognito, Close */
+        /* Chrome-style quick actions: Assistant AI, Incognito, Close */
         #quick-actions {
             position: fixed; top: 16px; right: 16px; z-index: 20;
             display: flex; align-items: center; gap: 10px;
@@ -469,13 +469,13 @@
     </button>
 
     <div id="quick-actions">
-        <button class="qa-btn glass" id="btn-ai" title="Ask Great Sage — AI assistant">
+        <button class="qa-btn glass" id="btn-ai" title="Ask the assistant — AI assistant">
             <svg viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z" /><path d="M19 14L19.9 16.6L22.5 17.5L19.9 18.4L19 21L18.1 18.4L15.5 17.5L18.1 16.6L19 14Z" opacity="0.7" /></svg>
         </button>
         <button class="qa-btn glass" id="btn-incognito" title="New InPrivate window">
             <svg viewBox="0 0 24 24"><path d="M12 3C9.79 3 8 4.79 8 7H4V9H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V9H20V7H16C16 4.79 14.21 3 12 3M8.5 12C9.33 12 10 12.67 10 13.5C10 14.33 9.33 15 8.5 15C7.67 15 7 14.33 7 13.5C7 12.67 7.67 12 8.5 12M12 7H9.5C9.5 5.62 10.62 4.5 12 4.5C13.38 4.5 14.5 5.62 14.5 7H12M15.5 12C16.33 12 17 12.67 17 13.5C17 14.33 16.33 15 15.5 15C14.67 15 14 14.33 14 13.5C14 12.67 14.67 12 15.5 12M8 17L9.6 15.4L11.2 17L12.8 15.4L14.4 17L15 16.4V19H9V16.4L8 17Z" /></svg>
         </button>
-        <button class="qa-btn glass" id="btn-close" title="Close Black">
+        <button class="qa-btn glass" id="btn-close" title="Close Black Firefox">
             <svg viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" /></svg>
         </button>
     </div>
@@ -624,8 +624,8 @@
         var $ = function (id) { return document.getElementById(id); };
 
         var GRADIENTS = [
-            ['Abyss', 'linear-gradient(160deg, #05080f 0%, #0b1220 100%)'],
-            ['Slime', 'linear-gradient(135deg, #38d9ff 0%, #8b5cf6 100%)'],
+            ['Proton', 'linear-gradient(160deg, #121216 0%, #17171c 100%)'],
+            ['Proton Blue', 'linear-gradient(135deg, #0060df 0%, #0a84ff 100%)'],
             ['Deep Ocean', 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)'],
             ['Midnight', 'linear-gradient(135deg, #141e30 0%, #243b55 100%)'],
             ['Nebula', 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)'],
@@ -643,7 +643,7 @@
             ['Noir Frost', 'wallpapers/noir-frost.png'],
             ['Noir Smoke', 'wallpapers/noir-smoke.png']
         ];
-        var ACCENTS = ['#38d9ff', '#8b5cf6', '#ffd54a', '#34d399', '#ff6b81'];
+        var ACCENTS = ['#0060df', '#0a84ff', '#ffd54a', '#34d399', '#ff6b81'];
         var QUOTES = [
             ['Simplicity is the ultimate sophistication.', 'Leonardo da Vinci'],
             ['Well begun is half done.', 'Aristotle'],
@@ -712,7 +712,7 @@
             bgVal: '',
             dim: 0.28,
             blur: 16,
-            accent: '#38d9ff',
+            accent: '#0060df',
             name: 'Shiva',
             aurora: false,
             fontScale: 1,
@@ -1229,7 +1229,7 @@
                         canvas.width = w;
                         canvas.height = h;
                         var ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#05080f';
+                        ctx.fillStyle = '#121216';
                         ctx.fillRect(0, 0, w, h);
                         ctx.drawImage(img, 0, 0, w, h);
                         resolve(canvas.toDataURL('image/jpeg', 0.82));

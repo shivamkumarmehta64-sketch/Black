@@ -45,8 +45,8 @@ if (process.env.BLACK_USER_DATA) {
   try { app.setPath('userData', process.env.BLACK_USER_DATA); } catch (e) {}
 }
 
-// Extract a web URL from a command line (Windows passes "Black.exe <url>"
-// when Black is chosen as the browser / default protocol handler).
+// Extract a web URL from a command line (Windows passes "Black Firefox.exe <url>"
+// when Black Firefox is chosen as the browser / default protocol handler).
 function urlFromArgv(argv = []) {
   for (const a of argv) {
     if (typeof a === 'string' && (a.startsWith('http://') || a.startsWith('https://'))) return a;
@@ -198,7 +198,7 @@ ipcMain.handle('open-external', (_e, url) => {
   return true;
 });
 
-// ── AI ASSISTANT (Great Sage): streaming chat via main-process fetch ────────
+// ── AI ASSISTANT: streaming chat via main-process fetch ─────────────────────
 // Routes requests through the main process so any OpenAI-compatible provider
 // works (no CORS issues), including local servers like Ollama.
 const aiControllers = new Map();
@@ -305,7 +305,7 @@ function setupContextMenu() {
 setupContextMenu();
 
 // Set official app name & AppUserModelID for Windows Volume Mixer & System Media Transport Controls
-app.name = 'Black Browser';
+app.name = 'Black Firefox';
 if (process.platform === 'win32') app.setAppUserModelId('com.black.browser');
 
 // Register black-ui custom protocol scheme as privileged (must be before app.whenReady)
@@ -358,7 +358,7 @@ function createWindow(opts = {}) {
     x: 120 + cascade,
     y: 60 + cascade,
     icon: path.join(__dirname, iconFile),
-    title: incognito ? 'InPrivate — Black Browser' : 'Black Browser',
+    title: incognito ? 'InPrivate — Black Firefox' : 'Black Firefox',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -367,7 +367,7 @@ function createWindow(opts = {}) {
       webviewTag: true,
       additionalArguments: [incognito ? '--black-incognito' : '--black-normal']
     },
-    backgroundColor: '#05080f',
+    backgroundColor: '#121216',
     show: false
   });
 
@@ -408,7 +408,7 @@ function createWindow(opts = {}) {
 function registerAsBrowser() {
   if (process.platform !== 'win32') return;
   const { execFile } = require('child_process');
-  const appName = 'Black';
+  const appName = 'Black Firefox';
   const appId = 'com.black.browser';
   const regClass = 'BlackBrowser';
   const htmlClass = 'BlackBrowserHTML';
@@ -460,10 +460,18 @@ function registerAsBrowser() {
   reg(`HKCU\\Software\\Classes\\${htmlClass}\\DefaultIcon`, { '@': exeIcon });
   reg(`HKCU\\Software\\Classes\\${htmlClass}\\Application`, { AppUserModelID: appId, FriendlyAppName: appName });
 
-  // "Open with" app-list entry (so Black.exe shows even while another
+  // Friendly display name for the Windows Volume Mixer / sound bar, keyed by
+  // the same AppUserModelID set via app.setAppUserModelId, so the app shows
+  // up as "Black Firefox" instead of the generic process/exe name.
+  reg(`HKCU\\Software\\Classes\\AppUserModelId\\${appId}`, {
+    DisplayName: appName,
+    FriendlyAppName: appName,
+  });
+
+  // "Open with" app-list entry (so Black Firefox.exe shows even while another
   // browser is the default) and the http/https protocol handlers.
-  reg(`HKCU\\Software\\Classes\\Applications\\Black.exe\\shell\\open\\command`, { '@': exeCommand });
-  reg(`HKCU\\Software\\Classes\\Applications\\Black.exe\\DefaultIcon`, { '@': exeIcon });
+  reg(`HKCU\\Software\\Classes\\Applications\\Black Firefox.exe\\shell\\open\\command`, { '@': exeCommand });
+  reg(`HKCU\\Software\\Classes\\Applications\\Black Firefox.exe\\DefaultIcon`, { '@': exeIcon });
   console.log('[Black] Registered as a Windows browser (HKCU)');
 }
 
@@ -584,11 +592,11 @@ app.whenReady().then(() => {
     }
   });
 
-  // Windows-style notification from the renderer (Great Sage alerts)
+  // Windows-style notification from the renderer (assistant alerts)
   ipcMain.handle('security-notify', (_e, title, body) => {
     try {
       if (Notification.isSupported()) {
-        const n = new Notification({ title: String(title || 'Great Sage'), body: String(body || ''), silent: false });
+        const n = new Notification({ title: String(title || 'Assistant'), body: String(body || ''), silent: false });
         n.show();
         return true;
       }
@@ -1377,7 +1385,7 @@ app.whenReady().then(() => {
     }
     if (trayIcon && !trayIcon.isEmpty()) {
       tray = new Tray(trayIcon);
-      tray.setToolTip('Black Browser');
+      tray.setToolTip('Black Firefox');
       const ctxMenu = Menu.buildFromTemplate([
         { label: 'Show Black', click: () => { mainWindow.show(); mainWindow.focus(); } },
         { type: 'separator' },

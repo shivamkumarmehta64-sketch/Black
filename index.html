@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Black Browser</title>
+    <title>Black Firefox</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <!-- PostHog Analytics -->
     <script>
@@ -90,18 +90,18 @@
 
         <!-- Status Bar -->
         <div id="status-bar">
-            <div class="sb-left"><span class="ipc-badge">IPC ACTIVE</span></div>
+            <div class="sb-left" id="sb-status"></div>
             <div class="sb-center" id="sb-zoom">100%</div>
             <div class="sb-right" id="sb-loading-url"></div>
         </div>
     </div>
 
-    <!-- AI Assistant Panel (Great Sage) -->
+    <!-- AI Assistant Panel -->
     <div id="ai-panel" class="glass-panel">
         <div class="ai-header">
             <span class="material-icons-round ai-logo">auto_awesome</span>
             <div class="ai-head-info">
-                <div class="ai-title">Great Sage</div>
+                <div class="ai-title">Assistant</div>
                 <div class="ai-sub" id="ai-model-label">Not configured</div>
             </div>
             <span class="material-icons-round ai-head-btn" id="ai-btn-settings" title="AI provider settings">settings</span>
@@ -111,30 +111,31 @@
         <div id="ai-messages" class="ai-messages">
             <div class="ai-welcome">
                 <span class="material-icons-round ai-welcome-icon">auto_awesome</span>
-                <div>I am the Great Sage.</div>
+                <div>I'm your browser assistant.</div>
                 <div class="ai-welcome-sub">Ask me anything. Configure your AI provider via the settings button above.</div>
             </div>
         </div>
         <div class="ai-chips" id="ai-chips">
-            <button class="ai-chip" data-chip="site" title="Ask Great Sage to review the current page">Is this site safe?</button>
+            <button class="ai-chip" data-chip="site" title="Ask the assistant to review the current page">Is this site safe?</button>
             <button class="ai-chip" data-chip="exposure" title="Run an IP/VPN OSINT check and explain">Check my exposure</button>
             <button class="ai-chip" data-chip="threats" title="Current scams & threats briefing">Latest threats</button>
             <button class="ai-chip" data-chip="advisor" title="Site Advisor report explained">My Site Advisor</button>
         </div>
         <div class="ai-composer">
-            <textarea id="ai-input" rows="1" placeholder="Ask the Great Sage..."></textarea>
+            <textarea id="ai-input" rows="1" placeholder="Ask the assistant..."></textarea>
             <button class="ai-send" id="ai-send" title="Send (Enter)"><span class="material-icons-round">send</span></button>
         </div>
     </div>
 
     <!-- Menus & Modals -->
     <div class="chrome-menu glass-panel" id="main-menu">
+        <div class="menu-group-header"><span class="material-icons-round">tab</span>Tabs</div>
         <div class="menu-item" id="mi-newtab"><span class="material-icons-round">add</span>New Tab<span class="menu-kbd">Ctrl+T</span></div>
         <div class="menu-item" id="mi-newwin"><span class="material-icons-round">open_in_new</span>New Window<span class="menu-kbd">Ctrl+N</span></div>
         <div class="menu-item" id="mi-incognito"><span class="material-icons-round">visibility_off</span>InPrivate Window<span class="menu-kbd">Ctrl+Shift+N</span></div>
         <div class="menu-item" id="mi-reopen"><span class="material-icons-round">replay</span>Reopen Closed Tab<span class="menu-kbd">Ctrl+Shift+T</span></div>
         <div class="menu-item" id="mi-layout"><span class="material-icons-round">vertical_split</span>Vertical Tabs<span class="menu-kbd"></span></div>
-        <div class="menu-divider"></div>
+        <div class="menu-group-header"><span class="material-icons-round">menu_book</span>Library</div>
         <div class="menu-item" id="mi-bookmarks"><span class="material-icons-round">bookmarks</span>Bookmarks<span class="menu-kbd">Ctrl+Shift+O</span></div>
         <div class="menu-item" id="mi-bm-all"><span class="material-icons-round">star</span>Bookmark All Tabs</div>
         <div class="menu-item" id="mi-history"><span class="material-icons-round">history</span>History<span class="menu-kbd">Ctrl+H</span></div>
@@ -142,7 +143,7 @@
         <div class="menu-item" id="mi-downloads"><span class="material-icons-round">download</span>Downloads<span class="menu-kbd">Ctrl+J</span></div>
         <div class="menu-item" id="mi-ext"><span class="material-icons-round">extension</span>Extensions</div>
         <div class="menu-item" id="mi-passwords"><span class="material-icons-round">password</span>Passwords<span class="menu-kbd">Wallet</span></div>
-        <div class="menu-divider"></div>
+        <div class="menu-group-header"><span class="material-icons-round">edit</span>Tools</div>
         <div class="menu-item" id="mi-reader"><span class="material-icons-round">menu_book</span>Immersive Reader<span class="menu-kbd">Ctrl+Shift+R</span></div>
         <div class="menu-item" id="mi-find"><span class="material-icons-round">manage_search</span>Find in Page<span class="menu-kbd">Ctrl+F</span></div>
         <div class="menu-item" id="mi-capture"><span class="material-icons-round">camera_alt</span>Web Capture</div>
@@ -156,7 +157,7 @@
             <button class="mbtn small" id="mz-reset">Reset</button>
         </div>
         <div class="menu-item" id="mi-print"><span class="material-icons-round">print</span>Print<span class="menu-kbd">Ctrl+P</span></div>
-        <div class="menu-divider"></div>
+        <div class="menu-group-header"><span class="material-icons-round">security</span>Privacy & More</div>
         <div class="menu-item" id="mi-usage"><span class="material-icons-round">speed</span>Privacy & Performance Center</div>
         <div class="menu-item" id="mi-security"><span class="material-icons-round">security</span>Security Center (OSINT)<span class="menu-kbd">Ctrl+Shift+S</span></div>
         <div class="menu-item" id="mi-block-site"><span class="material-icons-round">block</span>Block this site</div>
@@ -271,7 +272,7 @@
     <div class="pm-overlay" id="ai-settings-modal" style="display:none">
         <div class="modal-panel glass-panel">
             <div class="modal-header">
-                <h3>Great Sage<span class="modal-sub">AI provider</span></h3>
+                <h3>Assistant<span class="modal-sub">AI provider</span></h3>
                 <span class="material-icons-round modal-close" data-close="ai-settings-modal">close</span>
             </div>
             <div class="modal-body">
@@ -307,8 +308,8 @@
                     <input type="number" id="ai-max-tokens" value="1024" min="16" max="32768">
                 </div>
                 <div class="mfield">
-                    <label for="ai-system">System prompt (Great Sage persona)</label>
-                    <textarea id="ai-system" rows="3" placeholder="You are the Great Sage..."></textarea>
+                    <label for="ai-system">System prompt</label>
+                    <textarea id="ai-system" rows="3" placeholder="You are a helpful browser assistant..."></textarea>
                 </div>
                 <div class="set-actions">
                     <button class="mbtn" id="ai-test">Test Connection</button>

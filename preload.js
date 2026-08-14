@@ -67,7 +67,7 @@ contextBridge.exposeInMainWorld('api', {
   // ── Memory ──
   gcCollect:        ()           => ipcRenderer.invoke('gc-collect'),
 
-  // ── AI Assistant (Great Sage) ──
+  // ── AI Assistant ──
   aiChatStart:      (payload)    => ipcRenderer.invoke('ai-chat-start', payload),
   aiChatStop:       ()           => ipcRenderer.send('ai-chat-stop'),
   onAiChunk:        (cb)         => ipcRenderer.on('ai-chunk', (_e, d) => cb(d)),
@@ -81,7 +81,7 @@ contextBridge.exposeInMainWorld('api', {
   advisorProceed:   (url)        => ipcRenderer.invoke('advisor-proceed', url),
   onAdvisorBlocked: (cb)         => ipcRenderer.on('advisor-blocked', (_e, d) => cb(d)),
 
-  // ── OSINT self-check tools (Great Sage) ──
+  // ── OSINT self-check tools ──
   osintCheck:       (type, param) => ipcRenderer.invoke('osint-check', type, param),
   securityNotify:   (title, body) => ipcRenderer.invoke('security-notify', title, body),
 

@@ -1,6 +1,6 @@
-# Contributing to Black Browser
+# Contributing to Black Firefox
 
-Thank you for your interest in contributing. Black is a privacy-first, ad-blocking Chromium browser built with Electron.
+Thank you for your interest in contributing. Black Firefox is a privacy-first, ad-blocking Chromium browser built with Electron.
 
 ## Quick Setup
 

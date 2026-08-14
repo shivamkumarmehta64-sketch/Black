@@ -1,4 +1,4 @@
-# ⚡ Black Browser
+# ⚡ Black Firefox
 
 > **The Dark Browser — Fast. Private. Secure.**  
 > A premium, glassmorphic desktop browser built with Electron & Chromium, tailored for power users.
@@ -47,7 +47,7 @@ Developed by **[shivamkumarmehta64-sketch](https://github.com/shivamkumarmehta64
 
 - 🎵 **[YouTube Music (mtube) v2.1.0](https://github.com/shivamkumarmehta64-sketch/mtube/releases/tag/v2.1.0)** — Lightweight desktop app for YouTube Music.
 - 📺 **[YouTube Desktop (ytube) v1.0.0](https://github.com/shivamkumarmehta64-sketch/ytube/releases/tag/v1.0.0)** — Dedicated desktop client for YouTube.
-- ⚡ **[Black Browser v1.0.0](https://github.com/shivamkumarmehta64-sketch/Black)** — Next-generation Glassmorphism Browser.
+- ⚡ **[Black Firefox v1.0.0](https://github.com/shivamkumarmehta64-sketch/Black)** — Next-generation Glassmorphism Browser.
 
 ---
 

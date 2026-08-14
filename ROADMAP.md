@@ -1,4 +1,4 @@
-# Black Browser — Build Roadmap
+# Black Firefox — Build Roadmap
 
 **Target**: a Chrome-parity browser with stronger privacy and built-in AI, built fast and lean.
 

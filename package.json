@@ -35,7 +35,7 @@
   },
   "build": {
     "appId": "com.black.browser",
-    "productName": "Black",
+    "productName": "Black Firefox",
     "directories": {
       "output": "dist"
     },
@@ -45,9 +45,9 @@
         "portable"
       ],
       "icon": "icon.ico",
-      "legalTrademarks": "Black Browser",
+      "legalTrademarks": "Black Firefox",
       "companyName": "Shivam Mehta",
-      "fileDescription": "Black Browser — Fast. Private. Secure.",
+      "fileDescription": "Black Firefox — Fast. Private. Secure.",
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "nsis": {
